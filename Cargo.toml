@@ -1,0 +1,2 @@
+[workspace]
+members = ["namedivider-rs", "python"]
