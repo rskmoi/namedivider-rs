@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyDict};
-use namedivider_rs::divider::divided_name::DividedName;
+
 use namedivider_rs::divider::basic_name_divider::BasicNameDivider;
 use namedivider_rs::divider::basic_name_divider::get_basic_name_divider;
 use namedivider_rs::divider::gbdt_name_divider::GBDTNameDivider;
@@ -45,7 +45,7 @@ impl PyDividedName {
     }
 
     fn __str__(&self) -> PyResult<String> {
-        return Ok(self.family.clone() + &self.separator + &self.given)
+        Ok(self.family.clone() + &self.separator + &self.given)
     }
 
     fn to_dict(&self, py: Python<'_>) -> PyResult<Py<PyDict>>{
@@ -57,7 +57,7 @@ impl PyDividedName {
             ("score", self.score.to_object(py))
         ];
         let dict = key_vals.into_py_dict(py);
-        return Ok(dict.into());
+        Ok(dict.into())
     }
 }
 
@@ -76,22 +76,22 @@ impl PyBasicNameDivider{
                                              normalize_name,
                                              "kanji_feature".to_string(),
                                              only_order_score_when_4);
-        return Self{divider};
+        Self{divider}
     }
 
     fn calc_score(&self, family: String, given: String) -> PyResult<f64> {
-        return Ok(self.divider.basic_score_calculator.calc_score(&family, &given));
+        Ok(self.divider.basic_score_calculator.calc_score(&family, &given))
     }
 
     fn divide_name(&self, undivided_name: String) -> PyResult<PyDividedName>{
         let divided_name = self.divider.divide_name(&undivided_name);
-        return Ok(PyDividedName{
+        Ok(PyDividedName{
             family: divided_name.family,
             given: divided_name.given,
             separator: divided_name.separator,
             algorithm: divided_name.algorithm,
             score: divided_name.score
-        });
+        })
     }
 }
 
@@ -104,26 +104,26 @@ struct PyGBDTNameDivider{
 impl PyGBDTNameDivider{
     #[new]
     #[args(separator="\" \"",normalize_name=true, only_order_score_when_4=false)]
-    fn new(separator: &str, normalize_name: bool, only_order_score_when_4: bool) -> Self {
+    fn new(separator: &str, normalize_name: bool, _only_order_score_when_4: bool) -> Self {
         let divider = get_gbdt_name_divider(separator.to_string(),
                                              normalize_name,
                                              "gbdt".to_string());
-        return Self{divider};
+        Self{divider}
     }
 
     fn calc_score(&self, family: String, given: String) -> PyResult<f64> {
-        return Ok(self.divider.gbdt_score_calculator.calc_score(&family, &given));
+        Ok(self.divider.gbdt_score_calculator.calc_score(&family, &given))
     }
 
     fn divide_name(&self, undivided_name: String) -> PyResult<PyDividedName>{
         let divided_name = self.divider.divide_name(&undivided_name);
-        return Ok(PyDividedName{
+        Ok(PyDividedName{
             family: divided_name.family,
             given: divided_name.given,
             separator: divided_name.separator,
             algorithm: divided_name.algorithm,
             score: divided_name.score
-        });
+        })
     }
 }
 
