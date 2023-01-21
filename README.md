@@ -22,7 +22,9 @@ lightgbmのモデルをPythonからRustに移植した結果、完璧に同じ�
 
 Python版をnamedivider-rsのPythonラッパーにするという可能性があり、その練習としてPythonライブラリとして使えるようにwheelファイルを公開しています。
 
-Python版に比べると(1)全てのassetsをバイナリに埋め込んでいる(2)Rustによる計算速度向上の2点で速度向上しています。
+Python版より数十倍オーダーで速いです。
+
+https://github.com/rskmoi/namedivider-rs/releases/download/0.0.1/namedivider-0.1.0-cp38-cp38-manylinux_2_31_x86_64.whl
 
 ```
 pip install namedivider-0.1.0-cp38-cp38-manylinux_2_31_x86_64.whl
