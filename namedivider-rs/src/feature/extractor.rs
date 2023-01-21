@@ -133,3 +133,23 @@ impl FamilyRankingFeatureExtractor{
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use crate::feature::extractor::SimpleFeatureExtractor;
+    use crate::feature::kanji::KanjiStatisticsRepository;
+
+    #[test]
+    fn test_simple_feature_extractor(){
+        let family = "中曽根".to_string();
+        let given = "康弘".to_string();
+        let kanji_statistics_repository = KanjiStatisticsRepository::new();
+        let extractor = SimpleFeatureExtractor{ kanji_statistics_repository };
+        let features = extractor.get_features(&family, &given);
+        assert_eq!(features.family_order_score, 1.2952503209242618);
+        assert_eq!(features.family_length_score, 1.2075945519196942);
+        assert_eq!(features.given_order_score, 1.0);
+        assert_eq!(features.given_length_score, 1.9410276679841898);
+    }
+}
