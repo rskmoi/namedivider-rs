@@ -70,7 +70,7 @@ struct PyBasicNameDivider{
 #[pymethods]
 impl PyBasicNameDivider{
     #[new]
-    #[args(separator="\" \"",normalize_name=true, only_order_score_when_4=false)]
+    #[args(separator="\" \"", normalize_name=true, only_order_score_when_4=false)]
     fn new(separator: &str, normalize_name: bool, only_order_score_when_4: bool) -> Self {
         let divider = get_basic_name_divider(separator.to_string(),
                                              normalize_name,
@@ -103,8 +103,8 @@ struct PyGBDTNameDivider{
 #[pymethods]
 impl PyGBDTNameDivider{
     #[new]
-    #[args(separator="\" \"",normalize_name=true, only_order_score_when_4=false)]
-    fn new(separator: &str, normalize_name: bool, _only_order_score_when_4: bool) -> Self {
+    #[args(separator="\" \"", normalize_name=true)]
+    fn new(separator: &str, normalize_name: bool) -> Self {
         let divider = get_gbdt_name_divider(separator.to_string(),
                                              normalize_name,
                                              "gbdt".to_string());
