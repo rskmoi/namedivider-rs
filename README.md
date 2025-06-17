@@ -33,39 +33,10 @@ Python版より数十倍オーダーで速いです。
 
 ### インストール
 
-プラットフォームに応じて適切なwheelを選択してください：
+現在はLinux (x64) Python 3.11用のwheelのみ提供しています：
 
-#### Linux (x64)
 ```bash
 pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-linux_x86_64.whl
 ```
 
-#### macOS (Intel)
-```bash
-pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-macosx_10_9_x86_64.whl
-```
-
-#### macOS (Apple Silicon)
-```bash
-pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-macosx_11_0_arm64.whl
-```
-
-#### Windows (x64)
-```bash
-pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-win_amd64.whl
-```
-
-### namedivider-pythonとの統合利用
-
-```python
-from namedivider import GBDTNameDivider, GBDTNameDividerConfig
-
-# Rustバックエンドを使用（約30倍高速）
-config = GBDTNameDividerConfig(backend="rust")
-divider = GBDTNameDivider(config)
-
-result = divider.divide_name("田中太郎")
-print(result)
-```
-
-ライセンスはpython実装と同じです。Linux/macOS/Windows用のwheelを公開しています。
+ライセンスはpython実装と同じです。他のプラットフォームやPythonバージョン用のwheelは順次提供予定です。
