@@ -24,10 +24,48 @@ Python版をnamedivider-rsのPythonラッパーにするという可能性があ
 
 Python版より数十倍オーダーで速いです。
 
-https://github.com/rskmoi/namedivider-rs/releases/download/0.0.1/namedivider-0.1.0-cp38-cp38-manylinux_2_31_x86_64.whl
+### v0.2.0での改善点
 
-```
-pip install namedivider-0.1.0-cp38-cp38-manylinux_2_31_x86_64.whl
+- lightgbm-rsの改善により、自動的なLGBM関数bindingが可能になりました
+- バッチ処理機能（`divide_names`メソッド）を追加しました
+- エラーハンドリングとパッケージ名の一貫性を改善しました
+- namedivider-pythonとの統合がより安定しました
+
+### インストール
+
+プラットフォームに応じて適切なwheelを選択してください：
+
+#### Linux (x64)
+```bash
+pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-linux_x86_64.whl
 ```
 
-ライセンスはpython実装と同じです。 ニーズや作者の気分次第でWindows/Mac用のwheelも公開するかもしれません。
+#### macOS (Intel)
+```bash
+pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-macosx_10_9_x86_64.whl
+```
+
+#### macOS (Apple Silicon)
+```bash
+pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-macosx_11_0_arm64.whl
+```
+
+#### Windows (x64)
+```bash
+pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-win_amd64.whl
+```
+
+### namedivider-pythonとの統合利用
+
+```python
+from namedivider import GBDTNameDivider, GBDTNameDividerConfig
+
+# Rustバックエンドを使用（約30倍高速）
+config = GBDTNameDividerConfig(backend="rust")
+divider = GBDTNameDivider(config)
+
+result = divider.divide_name("田中太郎")
+print(result)
+```
+
+ライセンスはpython実装と同じです。Linux/macOS/Windows用のwheelを公開しています。
