@@ -1,4 +1,4 @@
-FROM rust:1.66-slim
+FROM rust:1.75-slim
 RUN mkdir /work
 WORKDIR /work
 COPY api /work
