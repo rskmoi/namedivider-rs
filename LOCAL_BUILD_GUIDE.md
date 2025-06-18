@@ -84,7 +84,7 @@ python3.11 -m maturin develop
 ### インストールとテスト
 ```bash
 # wheelのインストール
-python -m pip install --force-reinstall dist/namedivider_rust-0.3.0-*.whl
+python -m pip install --force-reinstall dist/namedivider_rust-0.2.0-*.whl
 
 # 基本機能テスト
 python -c "
@@ -129,7 +129,7 @@ print(f'処理速度: {1000/basic_time:.0f} 件/秒')
 
 ### ビルド成功時
 ```
-Building wheels for namedivider-rust v0.3.0
+Building wheels for namedivider-rust v0.2.0
 === Building for Python 3.9 ===
 ✓ Successfully built wheel for Python 3.9
 === Building for Python 3.10 ===  
@@ -137,15 +137,15 @@ Building wheels for namedivider-rust v0.3.0
 ...
 
 === Built wheels ===
-namedivider_rust-0.3.0-cp39-cp39-linux_x86_64.whl
-namedivider_rust-0.3.0-cp310-cp310-linux_x86_64.whl
+namedivider_rust-0.2.0-cp39-cp39-linux_x86_64.whl
+namedivider_rust-0.2.0-cp310-cp310-linux_x86_64.whl
 ...
 ```
 
 ### プラットフォーム別Wheel名
-- **Linux**: `namedivider_rust-0.3.0-cp311-cp311-linux_x86_64.whl`
-- **macOS**: `namedivider_rust-0.3.0-cp311-cp311-macosx_11_0_x86_64.whl`
-- **Windows**: `namedivider_rust-0.3.0-cp311-cp311-win_amd64.whl`
+- **Linux**: `namedivider_rust-0.2.0-cp311-cp311-linux_x86_64.whl`
+- **macOS**: `namedivider_rust-0.2.0-cp311-cp311-macosx_11_0_x86_64.whl`
+- **Windows**: `namedivider_rust-0.2.0-cp311-cp311-win_amd64.whl`
 
 ## トラブルシューティング
 

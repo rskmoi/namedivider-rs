@@ -23,7 +23,7 @@ mkdir -p "$DIST_DIR"
 # Python versions to build for
 PYTHON_VERSIONS=("3.9" "3.10" "3.11" "3.12" "3.13")
 
-echo "Building wheels for namedivider-rust v0.3.0"
+echo "Building wheels for namedivider-rust v0.2.0"
 echo "Project root: $PROJECT_ROOT"
 echo "Python directory: $PYTHON_DIR"
 echo "Distribution directory: $DIST_DIR"
