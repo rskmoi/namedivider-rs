@@ -1,2 +1,5 @@
 [workspace]
 members = ["namedivider-rs", "api", "python"]
+
+[workspace.dependencies]
+lightgbm = { git = "https://github.com/rskmoi/lightgbm-rs", rev = "4f380985abb140489870e42bc09b1764d74c7c13" }
