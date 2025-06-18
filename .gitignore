@@ -1,2 +1,6 @@
 target/
 .idea/
+dist/
+family_names.txt
+namedivider-rs/family_names.txt
+*.whl
