@@ -866,7 +866,7 @@ dependencies = [
 [[package]]
 name = "lightgbm"
 version = "0.2.3"
-source = "git+https://github.com/rskmoi/lightgbm-rs?rev=4f380985abb140489870e42bc09b1764d74c7c13#4f380985abb140489870e42bc09b1764d74c7c13"
+source = "git+https://github.com/rskmoi/lightgbm-rs?branch=main#4f380985abb140489870e42bc09b1764d74c7c13"
 dependencies = [
  "derive_builder",
  "libc",
@@ -877,7 +877,7 @@ dependencies = [
 [[package]]
 name = "lightgbm-sys"
 version = "0.3.0"
-source = "git+https://github.com/rskmoi/lightgbm-rs?rev=4f380985abb140489870e42bc09b1764d74c7c13#4f380985abb140489870e42bc09b1764d74c7c13"
+source = "git+https://github.com/rskmoi/lightgbm-rs?branch=main#4f380985abb140489870e42bc09b1764d74c7c13"
 dependencies = [
  "bindgen",
  "cmake",
