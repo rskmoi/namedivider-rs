@@ -1,5 +1,12 @@
 # namedivider-rs
 
+## 2025-06-19
+
+現在作業中のためREADMEと実態が合っていない状態が数日続く予定です。作業が終わると以下の状態になる予定です。
+- namedivider-rs v0.2.0がリリースされる
+- namedivider-api v0.3.0がリリースされる
+- PythonラッパーがPython3.9-3.13、linux/mac/windowsで動作する
+
 ## About
 
 姓名が連結している日本語の名前を姓と名に分割するライブラリ**NameDivider**のrust実装です。

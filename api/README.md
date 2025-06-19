@@ -1,5 +1,13 @@
 # NameDivider API
 
+## 2025-06-19
+
+現在作業中のためREADMEと実態が合っていない状態が数日続く予定です。作業が終わると以下の状態になる予定です。急ぎの方は少し前のREADMEをcommit遡ってご確認下さい。
+- namedivider-rs v0.2.0がリリースされる
+- namedivider-api v0.3.0がリリースされる
+
+---
+
 Python以外の環境からNameDividerを使えるようにするためにREST APIをホストするDockerイメージを提供しています。
 
 https://hub.docker.com/r/rskmoi/namedivider-api
@@ -37,7 +45,7 @@ v0.3.0では、lightgbm-rsの改善により以下の性能向上を実現しま
 ## Installation
 
 ```
-docker pull rskmoi/namedivider-api:0.2.0-beta
+docker pull rskmoi/namedivider-api:0.3.0
 ```
 
 ## Usage
@@ -45,7 +53,7 @@ docker pull rskmoi/namedivider-api:0.2.0-beta
 - Run Docker Image
 
 ```
-docker run -d --rm -p 8000:8000 rskmoi/namedivider-api:0.2.0-beta
+docker run -d --rm -p 8000:8000 rskmoi/namedivider-api:0.3.0
 ```
 
 - Send HTTP request
