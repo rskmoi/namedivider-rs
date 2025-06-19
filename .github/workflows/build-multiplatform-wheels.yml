@@ -1,0 +1,169 @@
+name: Build Multi-platform Wheels
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build wheel for ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: 1.75.0
+
+    - name: Install system dependencies (Ubuntu)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake
+
+    - name: Install system dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake
+
+    - name: Install system dependencies (Windows)
+      if: runner.os == 'Windows'
+      shell: cmd
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+
+    - name: Reconstruct family_names.txt
+      run: |
+        mkdir -p secret
+        
+        # Function to add newline if needed
+        add_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" != *$'\n' ]]; then
+            printf "%s\n" "$content"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Function to remove newline if needed  
+        remove_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" == *$'\n' ]]; then
+            printf "%s" "${content%$'\n'}"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Direct sequential output approach for perfect reconstruction
+        {
+          printf "%s" "${FAMILY_NAMES_PART_1}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_2}" | add_newline_if_needed  
+          printf "%s" "${FAMILY_NAMES_PART_3}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_4}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_5}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_6}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_7}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_8}" | remove_newline_if_needed
+        } > secret/family_names.txt
+        
+        cp secret/family_names.txt namedivider-rs/family_names.txt
+      env:
+        FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
+        FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
+        FAMILY_NAMES_PART_3: ${{ secrets.FAMILY_NAMES_PART_3 }}
+        FAMILY_NAMES_PART_4: ${{ secrets.FAMILY_NAMES_PART_4 }}
+        FAMILY_NAMES_PART_5: ${{ secrets.FAMILY_NAMES_PART_5 }}
+        FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
+        FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
+        FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
+      shell: bash
+
+    - name: Verify family_names.txt reconstruction
+      run: |
+        echo "Family names file size: $(wc -c < namedivider-rs/family_names.txt)"
+        echo "Family names line count: $(wc -l < namedivider-rs/family_names.txt)"
+        echo "Expected line count: 39999"
+        if [ "$(wc -l < namedivider-rs/family_names.txt)" -eq 39999 ]; then
+          echo "✓ File reconstruction successful"
+        else
+          echo "✗ File reconstruction failed"
+          exit 1
+        fi
+      shell: bash
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install maturin
+
+    - name: Build wheel
+      working-directory: python
+      run: |
+        python -m maturin build --release --out ../dist/
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v3
+      with:
+        name: wheels-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: dist/*.whl
+
+    - name: Test wheel installation
+      run: |
+        python -m pip install --force-reinstall dist/*.whl
+        python -c "
+        import namedivider_rust
+        
+        # Test Basic divider
+        basic = namedivider_rust.BasicNameDivider()
+        result1 = basic.divide_name('田中太郎')
+        print(f'Basic: {result1}')
+        assert str(result1) == '田中 太郎'
+        
+        # Test GBDT divider  
+        gbdt = namedivider_rust.GBDTNameDivider()
+        result2 = gbdt.divide_name('佐藤花子')
+        print(f'GBDT: {result2}')
+        assert str(result2) == '佐藤 花子'
+        
+        print('✓ All tests passed on ${{ matrix.os }} with Python ${{ matrix.python-version }}!')
+        "
+
+  collect-wheels:
+    name: Collect all wheels
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: dist/
+
+    - name: List all wheels
+      run: |
+        echo "=== Built Wheels ==="
+        find dist/ -name "*.whl" -type f | sort
+        echo ""
+        echo "Total wheels built: $(find dist/ -name "*.whl" -type f | wc -l)"
+        echo "Expected: 20 wheels (4 platforms × 5 Python versions)"
+        echo "Platforms: Linux x86_64, Windows x64, macOS Intel x86_64, macOS Apple Silicon arm64"
+
+    - name: Upload combined wheels
+      uses: actions/upload-artifact@v3
+      with:
+        name: all-wheels-v0.2.0
+        path: dist/*/*.whl
