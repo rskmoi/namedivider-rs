@@ -1,5 +1,12 @@
 # namedivider-rs
 
+## 2025-06-19
+
+現在作業中のためREADMEと実態が合っていない状態が数日続く予定です。作業が終わると以下の状態になる予定です。
+- namedivider-rs v0.2.0がリリースされる
+- namedivider-api v0.3.0がリリースされる
+- PythonラッパーがPython3.9-3.13、linux/mac/windowsで動作する
+
 ## About
 
 姓名が連結している日本語の名前を姓と名に分割するライブラリ**NameDivider**のrust実装です。
@@ -24,10 +31,19 @@ Python版をnamedivider-rsのPythonラッパーにするという可能性があ
 
 Python版より数十倍オーダーで速いです。
 
-https://github.com/rskmoi/namedivider-rs/releases/download/0.0.1/namedivider-0.1.0-cp38-cp38-manylinux_2_31_x86_64.whl
+### v0.2.0での改善点
 
-```
-pip install namedivider-0.1.0-cp38-cp38-manylinux_2_31_x86_64.whl
+- lightgbm-rsの改善により、自動的なLGBM関数bindingが可能になりました
+- バッチ処理機能（`divide_names`メソッド）を追加しました
+- エラーハンドリングとパッケージ名の一貫性を改善しました
+- namedivider-pythonとの統合がより安定しました
+
+### インストール
+
+現在はLinux (x64) Python 3.11用のwheelのみ提供しています：
+
+```bash
+pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-linux_x86_64.whl
 ```
 
-ライセンスはpython実装と同じです。 ニーズや作者の気分次第でWindows/Mac用のwheelも公開するかもしれません。
+ライセンスはpython実装と同じです。他のプラットフォームやPythonバージョン用のwheelは順次提供予定です。

@@ -1,6 +1,6 @@
 [package]
 name = "api"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,3 +9,6 @@ edition = "2021"
 actix-web = "4.3.1"
 namedivider-rs = {path = "../namedivider-rs"}
 serde = "1.0.164"
+
+# Force older url version to avoid Rust 1.82 requirement from icu dependencies
+url = "=2.4.1"

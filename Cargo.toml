@@ -1,2 +1,6 @@
 [workspace]
 members = ["namedivider-rs", "api", "python"]
+resolver = "2"
+
+[workspace.dependencies]
+lightgbm = { git = "https://github.com/rskmoi/lightgbm-rs", branch = "main" }

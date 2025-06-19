@@ -93,6 +93,21 @@ impl PyBasicNameDivider{
             score: divided_name.score
         })
     }
+
+    fn divide_names(&self, undivided_names: Vec<String>) -> PyResult<Vec<PyDividedName>>{
+        let mut results = Vec::new();
+        for undivided_name in undivided_names {
+            let divided_name = self.divider.divide_name(&undivided_name);
+            results.push(PyDividedName{
+                family: divided_name.family,
+                given: divided_name.given,
+                separator: divided_name.separator,
+                algorithm: divided_name.algorithm,
+                score: divided_name.score
+            });
+        }
+        Ok(results)
+    }
 }
 
 #[pyclass(unsendable, name="GBDTNameDivider")]
@@ -125,10 +140,25 @@ impl PyGBDTNameDivider{
             score: divided_name.score
         })
     }
+
+    fn divide_names(&self, undivided_names: Vec<String>) -> PyResult<Vec<PyDividedName>>{
+        let mut results = Vec::new();
+        for undivided_name in undivided_names {
+            let divided_name = self.divider.divide_name(&undivided_name);
+            results.push(PyDividedName{
+                family: divided_name.family,
+                given: divided_name.given,
+                separator: divided_name.separator,
+                algorithm: divided_name.algorithm,
+                score: divided_name.score
+            });
+        }
+        Ok(results)
+    }
 }
 
 #[pymodule]
-fn namedivider(_py: Python, m: &PyModule) -> PyResult<()> {
+fn namedivider_rust(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyDividedName>()?;
     m.add_class::<PyBasicNameDivider>()?;
     m.add_class::<PyGBDTNameDivider>()?;

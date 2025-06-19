@@ -1,17 +1,51 @@
-# NameDivider API 0.2.0-beta
+# NameDivider API
+
+## 2025-06-19
+
+現在作業中のためREADMEと実態が合っていない状態が数日続く予定です。作業が終わると以下の状態になる予定です。急ぎの方は少し前のREADMEをcommit遡ってご確認下さい。
+- namedivider-rs v0.2.0がリリースされる
+- namedivider-api v0.3.0がリリースされる
+
+---
 
 Python以外の環境からNameDividerを使えるようにするためにREST APIをホストするDockerイメージを提供しています。
 
 https://hub.docker.com/r/rskmoi/namedivider-api
 
-0.1.0はPython版(FastAPI)で、BasicNameDividerのみの提供でした。
+## Version History
 
-0.2.0はRust(actix-web)で実装しており、BasicNameDividerに加えてGBDTNameDividerも使えるようになっています。
+- **0.1.0**: Python版(FastAPI)で、BasicNameDividerのみの提供
+- **0.2.0-beta**: Rust(actix-web)で実装、BasicNameDivider + GBDTNameDivider対応
+- **0.3.0**: lightgbm-rs改善版統合により高速化
+
+## Performance Improvements in v0.3.0
+
+v0.3.0では、lightgbm-rsの改善により以下の性能向上を実現しました：
+
+### GBDT modeでの測定結果
+- **単一名前処理**: 21.38ms → 20.34ms (**5%高速化**)
+- **バッチ処理**: 0.48ms/1name → 0.42ms/1name (**14%高速化**)
+
+### 高速化の技術的要因
+
+1. **bindgen 0.69による最適化**
+   - 手動LightGBM C関数定義から自動生成へ
+   - より効率的な関数呼び出しパターン
+   - メモリレイアウトの最適化
+
+2. **バッチ処理での効率向上**
+   - メモリアクセスの局所性改善
+   - 関数呼び出しオーバーヘッドの削減
+   - キャッシュ効率の向上
+
+3. **依存関係の最適化**
+   - Rust 1.75対応による新しい最適化フラグ活用
+   - LLVMバックエンドの改善適用
 
 ## Installation
 
 ```
-docker pull rskmoi/namedivider-api:0.2.0-beta
+docker pull rskmoi/namedivider-api:0.3.0
 ```
 
 ## Usage
@@ -19,7 +53,7 @@ docker pull rskmoi/namedivider-api:0.2.0-beta
 - Run Docker Image
 
 ```
-docker run -d --rm -p 8000:8000 rskmoi/namedivider-api:0.2.0-beta
+docker run -d --rm -p 8000:8000 rskmoi/namedivider-api:0.3.0
 ```
 
 - Send HTTP request
