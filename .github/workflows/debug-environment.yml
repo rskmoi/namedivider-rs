@@ -14,12 +14,19 @@ jobs:
       run: |
         python -m pip install cibuildwheel
         
-        # Create minimal test project
+        # Create minimal test project with proper TOML format
         mkdir -p test-project
         cd test-project
         echo 'print("Hello World")' > test.py
-        echo '[build-system]\nrequires = ["setuptools"]\nbuild-backend = "setuptools.build_meta"' > pyproject.toml
-        echo '[project]\nname = "test"\nversion = "0.1.0"' >> pyproject.toml
+        cat > pyproject.toml << 'EOF'
+        [build-system]
+        requires = ["setuptools"]
+        build-backend = "setuptools.build_meta"
+
+        [project]
+        name = "test"
+        version = "0.1.0"
+        EOF
         
         # Test environment variable propagation
         export CIBW_BUILD="cp311-*"
