@@ -1,15 +1,15 @@
-use crate::feature::kanji::KanjiStatisticsRepository;
 use crate::feature::family_name::FamilyNameRepository;
 use crate::feature::functional as F;
+use crate::feature::kanji::KanjiStatisticsRepository;
 
-pub struct SimpleFeatures{
+pub struct SimpleFeatures {
     pub family_order_score: f64,
     pub family_length_score: f64,
     pub given_order_score: f64,
-    pub given_length_score: f64
+    pub given_length_score: f64,
 }
 
-pub struct FamilyRankingFeatures{
+pub struct FamilyRankingFeatures {
     pub rank: f64,
     pub fullname_length: f64,
     pub family_length: f64,
@@ -18,66 +18,72 @@ pub struct FamilyRankingFeatures{
     pub given_order_score: f64,
     pub family_length_score: f64,
     pub given_length_score: f64,
-    pub given_startswith_specific_kanji: f64
+    pub given_startswith_specific_kanji: f64,
 }
 
-impl FamilyRankingFeatures{
-    pub fn to_vec(&self) -> Vec<f64>{
-        vec![self.rank,
-                    self.fullname_length,
-                    self.family_length,
-                    self.given_length,
-                    self.family_order_score,
-                    self.given_order_score,
-                    self.family_length_score,
-                    self.given_length_score,
-                    self.given_startswith_specific_kanji
+impl FamilyRankingFeatures {
+    pub fn to_vec(&self) -> Vec<f64> {
+        vec![
+            self.rank,
+            self.fullname_length,
+            self.family_length,
+            self.given_length,
+            self.family_order_score,
+            self.given_order_score,
+            self.family_length_score,
+            self.given_length_score,
+            self.given_startswith_specific_kanji,
         ]
     }
 }
 
-pub struct SimpleFeatureExtractor{
-    pub kanji_statistics_repository: KanjiStatisticsRepository
+pub struct SimpleFeatureExtractor {
+    pub kanji_statistics_repository: KanjiStatisticsRepository,
 }
 
-impl SimpleFeatureExtractor{
-    pub fn get_features(&self, family: &String, given: &String) -> SimpleFeatures{
+impl SimpleFeatureExtractor {
+    pub fn get_features(&self, family: &String, given: &String) -> SimpleFeatures {
         let fullname_length = family.chars().count() + given.chars().count();
         let family_order_score = F::calc_order_score(
             &self.kanji_statistics_repository,
             family,
             fullname_length,
-            0
+            0,
         );
         let family_length_score = F::calc_length_score(
             &self.kanji_statistics_repository,
             family,
             fullname_length,
-            0
+            0,
         );
         let given_order_score = F::calc_order_score(
             &self.kanji_statistics_repository,
             given,
             fullname_length,
-            family.chars().count()
+            family.chars().count(),
         );
         let given_length_score = F::calc_length_score(
             &self.kanji_statistics_repository,
             given,
             fullname_length,
-            family.chars().count()
+            family.chars().count(),
         );
-        SimpleFeatures{ family_order_score, family_length_score, given_order_score, given_length_score }
+        SimpleFeatures {
+            family_order_score,
+            family_length_score,
+            given_order_score,
+            given_length_score,
+        }
     }
 }
 
-pub struct FamilyRankingFeatureExtractor{
+pub struct FamilyRankingFeatureExtractor {
     pub kanji_statistics_repository: KanjiStatisticsRepository,
-    pub family_name_repository: FamilyNameRepository
+    pub family_name_repository: FamilyNameRepository,
 }
 
-impl FamilyRankingFeatureExtractor{
-    pub fn get_features(&self, family: &String, given: &String) -> FamilyRankingFeatures{
+impl FamilyRankingFeatureExtractor {
+    pub fn get_features(&self, family: &String, given: &String) -> FamilyRankingFeatures {
         let rank = self.family_name_repository.get_rank(family);
         let family_length = family.chars().count();
         let family_length_f64 = family_length as f64;
@@ -89,38 +95,38 @@ impl FamilyRankingFeatureExtractor{
             &self.kanji_statistics_repository,
             family,
             fullname_length,
-            0
+            0,
         );
         let family_length_score = F::calc_length_score(
             &self.kanji_statistics_repository,
             family,
             fullname_length,
-            0
+            0,
         );
         let given_order_score = F::calc_order_score(
             &self.kanji_statistics_repository,
             given,
             fullname_length,
-            family.chars().count()
+            family.chars().count(),
         );
         let given_length_score = F::calc_length_score(
             &self.kanji_statistics_repository,
             given,
             fullname_length,
-            family.chars().count()
+            family.chars().count(),
         );
 
-        let mut given_startswith_specific_kanji= false;
+        let mut given_startswith_specific_kanji = false;
         let specific_kanjis = ["田", "谷", "川", "島", "原", "村", "塚", "森", "井", "子"];
-        for _specific_kanji in specific_kanjis{
-            if given.starts_with(_specific_kanji){
+        for _specific_kanji in specific_kanjis {
+            if given.starts_with(_specific_kanji) {
                 given_startswith_specific_kanji = true;
                 break;
             }
         }
         let given_startswith_specific_kanji_f64 = given_startswith_specific_kanji as i32 as f64;
 
-        FamilyRankingFeatures{
+        FamilyRankingFeatures {
             rank,
             fullname_length: fullname_length_f64,
             family_length: family_length_f64,
@@ -129,11 +135,10 @@ impl FamilyRankingFeatureExtractor{
             given_order_score,
             family_length_score,
             given_length_score,
-            given_startswith_specific_kanji: given_startswith_specific_kanji_f64
+            given_startswith_specific_kanji: given_startswith_specific_kanji_f64,
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -141,11 +146,13 @@ mod tests {
     use crate::feature::kanji::KanjiStatisticsRepository;
 
     #[test]
-    fn test_simple_feature_extractor(){
+    fn test_simple_feature_extractor() {
         let family = "中曽根".to_string();
         let given = "康弘".to_string();
         let kanji_statistics_repository = KanjiStatisticsRepository::new();
-        let extractor = SimpleFeatureExtractor{ kanji_statistics_repository };
+        let extractor = SimpleFeatureExtractor {
+            kanji_statistics_repository,
+        };
         let features = extractor.get_features(&family, &given);
         assert_eq!(features.family_order_score, 1.2952503209242618);
         assert_eq!(features.family_length_score, 1.2075945519196942);
