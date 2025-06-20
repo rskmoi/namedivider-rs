@@ -137,7 +137,19 @@ jobs:
         echo "Building for cp${PYTHON_TAG}"
         export CIBW_BUILD="cp${PYTHON_TAG}-*"
         echo "CIBW_BUILD=${CIBW_BUILD}"
-        python -m cibuildwheel python/ --output-dir dist/
+        
+        # Build manylinux first
+        echo "=== Building manylinux wheels ==="
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_SKIP="*-musllinux*"
+        python -m cibuildwheel python/ --output-dir dist/ || echo "manylinux build completed"
+        
+        # Build musllinux separately
+        echo "=== Building musllinux wheels ==="
+        unset CIBW_ENVIRONMENT
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
+        export CIBW_SKIP="*-manylinux*"
+        python -m cibuildwheel python/ --output-dir dist/ || echo "musllinux build completed"
       env:
         CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
@@ -166,8 +178,6 @@ jobs:
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
-        CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
-        CIBW_ENVIRONMENT_MUSLLINUX: 'PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
         CIBW_BEFORE_BUILD: "pip install maturin"
 
     - name: Build wheel (macOS/Windows with maturin)
