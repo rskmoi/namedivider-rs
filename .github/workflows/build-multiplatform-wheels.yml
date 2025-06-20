@@ -197,7 +197,10 @@ jobs:
         RUST_BACKTRACE: 1
       run: |
         echo "=== Testing wheel installation ==="
-        python -m pip install --force-reinstall dist/*.whl
+        echo "Available wheels:"
+        ls -la dist/*.whl
+        echo "Installing manylinux wheel (compatible with ubuntu-latest):"
+        python -m pip install --force-reinstall dist/*manylinux*.whl
         echo "Installed successfully, testing functionality..."
         python -c "
         import namedivider_rust
