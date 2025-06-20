@@ -1,0 +1,63 @@
+name: Debug Environment Variables
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug-libclang:
+    name: Debug LIBCLANG_PATH Environment
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Test Environment Variables with cibuildwheel
+      run: |
+        python -m pip install cibuildwheel
+        
+        # Create minimal test project
+        mkdir -p test-project
+        cd test-project
+        echo 'print("Hello World")' > test.py
+        echo '[build-system]\nrequires = ["setuptools"]\nbuild-backend = "setuptools.build_meta"' > pyproject.toml
+        echo '[project]\nname = "test"\nversion = "0.1.0"' >> pyproject.toml
+        
+        # Test environment variable propagation
+        export CIBW_BUILD="cp311-*"
+        export CIBW_MANYLINUX_X86_64_IMAGE="quay.io/pypa/manylinux2014_x86_64"
+        export CIBW_MUSLLINUX_X86_64_IMAGE="quay.io/pypa/musllinux_1_2_x86_64"
+        
+        export CIBW_BEFORE_ALL_LINUX="
+        echo '=== Environment Debug ==='
+        echo 'Distribution detection:'
+        if command -v apk >/dev/null 2>&1; then
+          echo 'Detected: musllinux (Alpine)'
+          apk add --no-cache cmake clang-dev llvm-dev build-base
+          echo 'Available libclang files:'
+          find /usr -name '*libclang*' -type f 2>/dev/null | head -5
+        else
+          echo 'Detected: manylinux'
+          yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
+          echo 'Available libclang files:'
+          find /opt/rh/llvm-toolset-7 -name '*libclang*' -type f 2>/dev/null | head -5
+        fi
+        "
+        
+        export CIBW_BEFORE_BUILD="
+        echo '=== Build Environment Test ==='
+        echo 'PATH:' \$PATH
+        echo 'LIBCLANG_PATH:' \$LIBCLANG_PATH
+        echo 'Environment variables containing LIBCLANG or PATH:'
+        env | grep -E '(LIBCLANG|PATH)' | sort
+        echo 'Test completed successfully'
+        exit 0
+        "
+        
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_ENVIRONMENT_MUSLLINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
+        
+        echo "=== Testing manylinux environment ==="
+        python -m cibuildwheel . --output-dir dist-test/ --platform linux || echo "Build stopped (expected - test only)"
+        
+        echo "=== Testing musllinux environment ==="
+        export CIBW_SKIP="*-manylinux*"
+        python -m cibuildwheel . --output-dir dist-test/ --platform linux || echo "Build stopped (expected - test only)"
