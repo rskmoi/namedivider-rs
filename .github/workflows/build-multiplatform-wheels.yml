@@ -86,6 +86,8 @@ jobs:
         } > secret/family_names.txt
         
         cp secret/family_names.txt namedivider-rs/family_names.txt
+        # Also copy to src/assets for rust-embed
+        cp secret/family_names.txt namedivider-rs/src/assets/family_names.txt
       env:
         FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
         FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
