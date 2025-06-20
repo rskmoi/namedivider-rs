@@ -1,46 +1,46 @@
 use pyo3::prelude::*;
 use pyo3::types::{IntoPyDict, PyDict};
 
-use namedivider_rs::divider::basic_name_divider::BasicNameDivider;
 use namedivider_rs::divider::basic_name_divider::get_basic_name_divider;
-use namedivider_rs::divider::gbdt_name_divider::GBDTNameDivider;
+use namedivider_rs::divider::basic_name_divider::BasicNameDivider;
 use namedivider_rs::divider::gbdt_name_divider::get_gbdt_name_divider;
+use namedivider_rs::divider::gbdt_name_divider::GBDTNameDivider;
 use namedivider_rs::divider::name_divider::NameDivider;
 use namedivider_rs::divider::score_calculator::ScoreCalculator;
 
-#[pyclass(name="DividedName")]
-struct PyDividedName{
+#[pyclass(name = "DividedName")]
+struct PyDividedName {
     family: String,
     given: String,
     separator: String,
     algorithm: String,
-    score: f64
+    score: f64,
 }
 
 #[pymethods]
 impl PyDividedName {
     #[getter]
-    fn family(&self) -> PyResult<String>{
+    fn family(&self) -> PyResult<String> {
         Ok(self.family.clone())
     }
 
     #[getter]
-    fn given(&self) -> PyResult<String>{
+    fn given(&self) -> PyResult<String> {
         Ok(self.given.clone())
     }
 
     #[getter]
-    fn separator(&self) -> PyResult<String>{
+    fn separator(&self) -> PyResult<String> {
         Ok(self.separator.clone())
     }
 
     #[getter]
-    fn algorithm(&self) -> PyResult<String>{
+    fn algorithm(&self) -> PyResult<String> {
         Ok(self.algorithm.clone())
     }
 
     #[getter]
-    fn score(&self) -> PyResult<f64>{
+    fn score(&self) -> PyResult<f64> {
         Ok(self.score)
     }
 
@@ -48,109 +48,119 @@ impl PyDividedName {
         Ok(self.family.clone() + &self.separator + &self.given)
     }
 
-    fn to_dict(&self, py: Python<'_>) -> PyResult<Py<PyDict>>{
+    fn to_dict(&self, py: Python<'_>) -> PyResult<Py<PyDict>> {
         let key_vals: Vec<(&str, PyObject)> = vec![
             ("family", self.family.to_object(py)),
             ("given", self.given.to_object(py)),
             ("separator", self.separator.to_object(py)),
             ("algorithm", self.algorithm.to_object(py)),
-            ("score", self.score.to_object(py))
+            ("score", self.score.to_object(py)),
         ];
         let dict = key_vals.into_py_dict(py);
         Ok(dict.into())
     }
 }
 
-
-#[pyclass(name="BasicNameDivider")]
-struct PyBasicNameDivider{
-    divider: BasicNameDivider
+#[pyclass(name = "BasicNameDivider")]
+struct PyBasicNameDivider {
+    divider: BasicNameDivider,
 }
 
 #[pymethods]
-impl PyBasicNameDivider{
+impl PyBasicNameDivider {
     #[new]
-    #[args(separator="\" \"", normalize_name=true, only_order_score_when_4=false)]
+    #[args(
+        separator = "\" \"",
+        normalize_name = true,
+        only_order_score_when_4 = false
+    )]
     fn new(separator: &str, normalize_name: bool, only_order_score_when_4: bool) -> Self {
-        let divider = get_basic_name_divider(separator.to_string(),
-                                             normalize_name,
-                                             "kanji_feature".to_string(),
-                                             only_order_score_when_4);
-        Self{divider}
+        let divider = get_basic_name_divider(
+            separator.to_string(),
+            normalize_name,
+            "kanji_feature".to_string(),
+            only_order_score_when_4,
+        );
+        Self { divider }
     }
 
     fn calc_score(&self, family: String, given: String) -> PyResult<f64> {
-        Ok(self.divider.basic_score_calculator.calc_score(&family, &given))
+        Ok(self
+            .divider
+            .basic_score_calculator
+            .calc_score(&family, &given))
     }
 
-    fn divide_name(&self, undivided_name: String) -> PyResult<PyDividedName>{
+    fn divide_name(&self, undivided_name: String) -> PyResult<PyDividedName> {
         let divided_name = self.divider.divide_name(&undivided_name);
-        Ok(PyDividedName{
+        Ok(PyDividedName {
             family: divided_name.family,
             given: divided_name.given,
             separator: divided_name.separator,
             algorithm: divided_name.algorithm,
-            score: divided_name.score
+            score: divided_name.score,
         })
     }
 
-    fn divide_names(&self, undivided_names: Vec<String>) -> PyResult<Vec<PyDividedName>>{
+    fn divide_names(&self, undivided_names: Vec<String>) -> PyResult<Vec<PyDividedName>> {
         let mut results = Vec::new();
         for undivided_name in undivided_names {
             let divided_name = self.divider.divide_name(&undivided_name);
-            results.push(PyDividedName{
+            results.push(PyDividedName {
                 family: divided_name.family,
                 given: divided_name.given,
                 separator: divided_name.separator,
                 algorithm: divided_name.algorithm,
-                score: divided_name.score
+                score: divided_name.score,
             });
         }
         Ok(results)
     }
 }
 
-#[pyclass(unsendable, name="GBDTNameDivider")]
-struct PyGBDTNameDivider{
-    divider: GBDTNameDivider
+#[pyclass(unsendable, name = "GBDTNameDivider")]
+struct PyGBDTNameDivider {
+    divider: GBDTNameDivider,
 }
 
 #[pymethods]
-impl PyGBDTNameDivider{
+impl PyGBDTNameDivider {
     #[new]
-    #[args(separator="\" \"", normalize_name=true)]
+    #[args(separator = "\" \"", normalize_name = true)]
     fn new(separator: &str, normalize_name: bool) -> Self {
-        let divider = get_gbdt_name_divider(separator.to_string(),
-                                             normalize_name,
-                                             "gbdt".to_string());
-        Self{divider}
+        let divider =
+            get_gbdt_name_divider(separator.to_string(), normalize_name, "gbdt".to_string());
+        Self { divider }
     }
 
     fn calc_score(&self, family: String, given: String) -> PyResult<f64> {
-        Ok(self.divider.gbdt_score_calculator.calc_score(&family, &given))
+        Ok(self
+            .divider
+            .gbdt_score_calculator
+            .calc_score(&family, &given))
     }
 
-    fn divide_name(&self, undivided_name: String) -> PyResult<PyDividedName>{
+    fn divide_name(&self, undivided_name: String) -> PyResult<PyDividedName> {
         let divided_name = self.divider.divide_name(&undivided_name);
-        Ok(PyDividedName{
+        Ok(PyDividedName {
             family: divided_name.family,
             given: divided_name.given,
             separator: divided_name.separator,
             algorithm: divided_name.algorithm,
-            score: divided_name.score
+            score: divided_name.score,
         })
     }
 
-    fn divide_names(&self, undivided_names: Vec<String>) -> PyResult<Vec<PyDividedName>>{
+    fn divide_names(&self, undivided_names: Vec<String>) -> PyResult<Vec<PyDividedName>> {
         let mut results = Vec::new();
         for undivided_name in undivided_names {
             let divided_name = self.divider.divide_name(&undivided_name);
-            results.push(PyDividedName{
+            results.push(PyDividedName {
                 family: divided_name.family,
                 given: divided_name.given,
                 separator: divided_name.separator,
                 algorithm: divided_name.algorithm,
-                score: divided_name.score
+                score: divided_name.score,
             });
         }
         Ok(results)
