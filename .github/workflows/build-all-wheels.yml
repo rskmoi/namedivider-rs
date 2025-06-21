@@ -100,6 +100,10 @@ jobs:
             apk add --no-cache cmake clang-dev llvm-dev build-base
           else
             echo "Detected: manylinux"
+            # Fix CentOS 7 repository issues
+            yum update -y || true
+            yum install -y centos-release-scl || true
+            yum install -y libatomic || true
             yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
             ln -sf /usr/bin/cmake3 /usr/bin/cmake
           fi
@@ -109,11 +113,71 @@ jobs:
           source $HOME/.cargo/env
         
         # Windows-specific setup  
-        CIBW_BEFORE_ALL_WINDOWS: >
-          echo "=== Installing build dependencies ===" &&
-          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
-          echo "=== Installing Rust ===" &&
+        CIBW_BEFORE_ALL_WINDOWS: |
+          echo "=== Installing build dependencies ==="
+          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System"
+          echo "=== Installing Rust ==="
           curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+          echo "=== Fixing UTF-8 encoding for GBDT model file ==="
+          powershell -Command "
+          # PowerShell環境の安定化とUTF-8統一設定
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+          [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
+          [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::InvariantCulture
+          
+          $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'
+          Write-Host 'Model file path: $modelFile'
+          Write-Host 'Model file exists: $(Test-Path $modelFile)'
+          
+          if (Test-Path $modelFile) {
+            $backupFile = '$modelFile.backup'
+            Copy-Item $modelFile $backupFile -Force
+            Write-Host 'Created backup: $backupFile'
+            
+            try {
+              # バイト配列として読み込み
+              $fileBytes = [System.IO.File]::ReadAllBytes($modelFile)
+              Write-Host 'Read file as byte array: $($fileBytes.Length) bytes'
+              
+              # UTF-8デコーダーで安全に変換
+              $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true)
+              $content = $utf8Decoder.GetString($fileBytes)
+              Write-Host 'Successfully decoded as UTF-8'
+              
+              # ファイル形式検証
+              $lines = $content -split '[\r\n]+' | Where-Object { $_.Trim() -ne '' }
+              $firstLine = $lines[0].Trim()
+              Write-Host 'First line: $firstLine'
+              
+              if ($firstLine -eq 'tree') {
+                Write-Host 'Model file format is correct (starts with tree)'
+              } else {
+                Write-Host 'Model file format unexpected'
+                Write-Host 'Expected: tree, Got: $firstLine'
+                throw 'Invalid model file format'
+              }
+              
+              # 正規化された改行コードでUTF-8保存
+              $normalizedContent = $content -replace '\r\n', '`n' -replace '\r', '`n'
+              $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+              [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom)
+              Write-Host 'File re-saved with normalized UTF-8 encoding'
+              
+            } catch {
+              Write-Host 'Error during file processing: $($_.Exception.Message)'
+              Copy-Item $backupFile $modelFile -Force
+              Write-Host 'Restored from backup'
+              throw $_
+            }
+          } else {
+            Write-Host 'Model file not found: $modelFile'
+            exit 1
+          }
+          "
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
@@ -132,7 +196,8 @@ jobs:
         # Environment for compilation
         CIBW_ENVIRONMENT_LINUX: >
           PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH"
-          LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
+          LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:/usr/lib/llvm20/lib"
+          LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:$LD_LIBRARY_PATH"
         
         CIBW_ENVIRONMENT_WINDOWS: >
           PYTHONUTF8=1
