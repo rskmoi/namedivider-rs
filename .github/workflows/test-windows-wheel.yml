@@ -57,8 +57,10 @@ jobs:
         $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_7
         $result += Remove-NewlineIfNeeded $env:FAMILY_NAMES_PART_8
         
-        # Write to file without BOM (UTF8 encoding like Linux)
-        [System.IO.File]::WriteAllText("secret\family_names.txt", $result, [System.Text.UTF8Encoding]::new($false))
+        # Write to file without BOM and ensure no extra newline at end (UTF8 encoding like Linux)
+        # Use WriteAllText with explicit content control to match Linux behavior
+        $finalResult = $result.TrimEnd("`r", "`n")  # Ensure no trailing newlines
+        [System.IO.File]::WriteAllText("secret\family_names.txt", $finalResult, [System.Text.UTF8Encoding]::new($false))
         
         # Copy to required locations
         Copy-Item "secret\family_names.txt" "namedivider-rs\family_names.txt"
