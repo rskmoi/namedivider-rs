@@ -1,0 +1,178 @@
+name: Test Windows Wheel Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-windows:
+    name: Test Windows wheel build - Python 3.11
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: 1.75.0
+
+    - name: Install system dependencies (Windows)
+      shell: cmd
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+
+    - name: Reconstruct family_names.txt
+      run: |
+        New-Item -ItemType Directory -Path "secret" -Force
+        
+        # Function to add newline if needed (PowerShell equivalent)
+        function Add-NewlineIfNeeded($content) {
+          if ($content -and !$content.EndsWith("`n") -and !$content.EndsWith("`r`n")) {
+            return $content + "`n"
+          }
+          return $content
+        }
+        
+        # Function to remove newline if needed (PowerShell equivalent)
+        function Remove-NewlineIfNeeded($content) {
+          if ($content -and ($content.EndsWith("`n") -or $content.EndsWith("`r`n"))) {
+            return $content.TrimEnd("`r", "`n")
+          }
+          return $content
+        }
+        
+        # Direct sequential output approach for perfect reconstruction (same as Linux)
+        $result = ""
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_1
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_2
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_3
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_4
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_5
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_6
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_7
+        $result += Remove-NewlineIfNeeded $env:FAMILY_NAMES_PART_8
+        
+        # Write to file without BOM (UTF8 encoding like Linux)
+        [System.IO.File]::WriteAllText("secret\family_names.txt", $result, [System.Text.UTF8Encoding]::new($false))
+        
+        # Copy to required locations
+        Copy-Item "secret\family_names.txt" "namedivider-rs\family_names.txt"
+        Copy-Item "secret\family_names.txt" "namedivider-rs\src\assets\family_names.txt"
+      env:
+        FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
+        FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
+        FAMILY_NAMES_PART_3: ${{ secrets.FAMILY_NAMES_PART_3 }}
+        FAMILY_NAMES_PART_4: ${{ secrets.FAMILY_NAMES_PART_4 }}
+        FAMILY_NAMES_PART_5: ${{ secrets.FAMILY_NAMES_PART_5 }}
+        FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
+        FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
+        FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
+      shell: powershell
+
+    - name: Debug family_names.txt reconstruction
+      run: |
+        Write-Host "=== family_names.txt Debug Info ==="
+        $fileExists = Test-Path "namedivider-rs\family_names.txt"
+        Write-Host "File exists: $fileExists"
+        
+        if ($fileExists) {
+          $fileSize = (Get-Item "namedivider-rs\family_names.txt").Length
+          Write-Host "File size: $fileSize bytes"
+          
+          $lineCount = (Get-Content "namedivider-rs\family_names.txt" | Measure-Object -Line).Lines
+          Write-Host "Line count: $lineCount"
+          Write-Host "Expected line count: 39999"
+          
+          Write-Host "First 3 lines:"
+          Get-Content "namedivider-rs\family_names.txt" | Select-Object -First 3
+          
+          Write-Host "Last 3 lines:"
+          Get-Content "namedivider-rs\family_names.txt" | Select-Object -Last 3
+        }
+      shell: powershell
+
+    - name: Verify family_names.txt reconstruction
+      run: |
+        $lineCount = (Get-Content "namedivider-rs\family_names.txt" | Measure-Object -Line).Lines
+        if ($lineCount -eq 39999) {
+          Write-Host "✓ File reconstruction successful ($lineCount lines)"
+        } else {
+          Write-Host "✗ File reconstruction failed: got $lineCount lines, expected 39999"
+          exit 1
+        }
+      shell: powershell
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install maturin
+
+    - name: Build wheel with maturin
+      working-directory: python
+      run: |
+        python -m maturin build --release --out ../dist/
+
+    - name: Upload wheel
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheel-windows-py3.11
+        path: dist/*.whl
+
+    - name: Test wheel installation
+      env:
+        RUST_BACKTRACE: 1
+      run: |
+        Write-Host "=== Testing wheel installation ==="
+        Write-Host "Available wheels:"
+        Get-ChildItem dist\*.whl
+        
+        Write-Host "Installing wheel:"
+        $wheelFile = Get-ChildItem dist\*.whl | Select-Object -First 1
+        if ($wheelFile) {
+          python -m pip install --force-reinstall $wheelFile.FullName
+        } else {
+          Write-Host "✗ No wheel file found"
+          exit 1
+        }
+        
+        Write-Host "Testing functionality..."
+        # Use a Python script file to avoid PowerShell string parsing issues with Japanese text
+        @"
+import namedivider_rust
+print('✓ Module imported successfully')
+
+# Test Basic divider
+try:
+    print('Creating BasicNameDivider...')
+    basic = namedivider_rust.BasicNameDivider()
+    print('✓ BasicNameDivider created')
+    result1 = basic.divide_name('田中太郎')
+    print(f'Basic result: {result1}')
+    assert str(result1) == '田中 太郎'
+    print('✓ BasicNameDivider test passed')
+except Exception as e:
+    print(f'✗ BasicNameDivider failed: {e}')
+    raise
+
+# Test GBDT divider  
+try:
+    print('Creating GBDTNameDivider...')
+    gbdt = namedivider_rust.GBDTNameDivider()
+    print('✓ GBDTNameDivider created')
+    result2 = gbdt.divide_name('佐藤花子')
+    print(f'GBDT result: {result2}')
+    assert str(result2) == '佐藤 花子'
+    print('✓ GBDTNameDivider test passed')
+except Exception as e:
+    print(f'✗ GBDTNameDivider failed: {e}')
+    raise
+
+print('✓ All tests passed on Windows with Python 3.11!')
+"@ | Out-File -FilePath "test_wheel.py" -Encoding UTF8
+        python test_wheel.py
+      shell: powershell
