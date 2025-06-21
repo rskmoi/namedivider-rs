@@ -148,39 +148,36 @@ jobs:
         }
         
         Write-Host "Testing functionality..."
-        # Create Python test script to avoid PowerShell string parsing issues
-        $pythonTest = @"
-import namedivider_rust
-print('✓ Module imported successfully')
-
-# Test Basic divider
-try:
-    print('Creating BasicNameDivider...')
-    basic = namedivider_rust.BasicNameDivider()
-    print('✓ BasicNameDivider created')
-    result1 = basic.divide_name('田中太郎')
-    print(f'Basic result: {result1}')
-    assert str(result1) == '田中 太郎'
-    print('✓ BasicNameDivider test passed')
-except Exception as e:
-    print(f'✗ BasicNameDivider failed: {e}')
-    raise
-
-# Test GBDT divider  
-try:
-    print('Creating GBDTNameDivider...')
-    gbdt = namedivider_rust.GBDTNameDivider()
-    print('✓ GBDTNameDivider created')
-    result2 = gbdt.divide_name('佐藤花子')
-    print(f'GBDT result: {result2}')
-    assert str(result2) == '佐藤 花子'
-    print('✓ GBDTNameDivider test passed')
-except Exception as e:
-    print(f'✗ GBDTNameDivider failed: {e}')
-    raise
-
-print('✓ All tests passed on Windows with Python 3.11!')
-"@
-        $pythonTest | Out-File -FilePath "test_wheel.py" -Encoding UTF8
-        python test_wheel.py
+        python -c "
+        import namedivider_rust
+        print('✓ Module imported successfully')
+        
+        # Test Basic divider
+        try:
+            print('Creating BasicNameDivider...')
+            basic = namedivider_rust.BasicNameDivider()
+            print('✓ BasicNameDivider created')
+            result1 = basic.divide_name('田中太郎')
+            print(f'Basic result: {result1}')
+            assert str(result1) == '田中 太郎'
+            print('✓ BasicNameDivider test passed')
+        except Exception as e:
+            print(f'✗ BasicNameDivider failed: {e}')
+            raise
+        
+        # Test GBDT divider  
+        try:
+            print('Creating GBDTNameDivider...')
+            gbdt = namedivider_rust.GBDTNameDivider()
+            print('✓ GBDTNameDivider created')
+            result2 = gbdt.divide_name('佐藤花子')
+            print(f'GBDT result: {result2}')
+            assert str(result2) == '佐藤 花子'
+            print('✓ GBDTNameDivider test passed')
+        except Exception as e:
+            print(f'✗ GBDTNameDivider failed: {e}')
+            raise
+        
+        print('✓ All tests passed on Windows with Python 3.11!')
+        "
       shell: powershell
