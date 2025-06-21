@@ -92,23 +92,20 @@ jobs:
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
         CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
         
-        # Linux manylinux setup
-        CIBW_BEFORE_ALL_LINUX: >
-          echo "=== Installing build dependencies ===" &&
-          yum update -y &&
-          yum install -y centos-release-scl &&
-          yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel &&
-          ln -sf /usr/bin/cmake3 /usr/bin/cmake &&
-          echo "=== Installing Rust ===" &&
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
-          source $HOME/.cargo/env
-        
-        # Linux musllinux setup  
-        CIBW_BEFORE_ALL_MUSLLINUX: >
-          echo "=== Installing build dependencies (Alpine) ===" &&
-          apk add --no-cache cmake clang-dev llvm-dev build-base &&
-          echo "=== Installing Rust ===" &&
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+        # Linux-specific setup (works for both manylinux and musllinux)
+        CIBW_BEFORE_ALL_LINUX: |
+          echo "=== Installing build dependencies ==="
+          if command -v apk >/dev/null 2>&1; then
+            echo "Detected: musllinux (Alpine)"
+            apk add --no-cache cmake clang-dev llvm-dev build-base
+          else
+            echo "Detected: manylinux"
+            yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
+            ln -sf /usr/bin/cmake3 /usr/bin/cmake
+          fi
+          
+          echo "=== Installing Rust ==="
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
         
         # Windows-specific setup  
