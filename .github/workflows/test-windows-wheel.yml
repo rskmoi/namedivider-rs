@@ -176,8 +176,13 @@ jobs:
     - name: Test Python functionality with Japanese characters
       env:
         RUST_BACKTRACE: 1
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
       run: |
         echo "=== Testing namedivider functionality ==="
+        
+        # Set console to UTF-8
+        chcp 65001
         
         # Test basic import
         python -c "import namedivider_rust; print('[OK] Module imported successfully')"
