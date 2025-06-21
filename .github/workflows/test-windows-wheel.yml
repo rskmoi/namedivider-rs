@@ -100,9 +100,9 @@ jobs:
       run: |
         $lineCount = (Get-Content "namedivider-rs\family_names.txt" | Measure-Object -Line).Lines
         if ($lineCount -eq 39999) {
-          Write-Host "✓ File reconstruction successful ($lineCount lines)"
+          Write-Host "[OK] File reconstruction successful ($lineCount lines)"
         } else {
-          Write-Host "✗ File reconstruction failed: got $lineCount lines, expected 39999"
+          Write-Host "[ERROR] File reconstruction failed: got $lineCount lines, expected 39999"
           exit 1
         }
       shell: powershell
@@ -111,7 +111,7 @@ jobs:
       run: |
         echo "=== Initializing Git submodules ==="
         git submodule update --init --recursive
-        echo "✓ Submodules initialized"
+        echo "[OK] Submodules initialized"
       shell: bash
 
     - name: Install Python dependencies
@@ -143,41 +143,41 @@ jobs:
         if ($wheelFile) {
           python -m pip install --force-reinstall $wheelFile.FullName
         } else {
-          Write-Host "✗ No wheel file found"
+          Write-Host "[ERROR] No wheel file found"
           exit 1
         }
         
         Write-Host "Testing functionality..."
         python -c "
         import namedivider_rust
-        print('✓ Module imported successfully')
+        print('[OK] Module imported successfully')
         
         # Test Basic divider
         try:
             print('Creating BasicNameDivider...')
             basic = namedivider_rust.BasicNameDivider()
-            print('✓ BasicNameDivider created')
+            print('[OK] BasicNameDivider created')
             result1 = basic.divide_name('田中太郎')
             print(f'Basic result: {result1}')
             assert str(result1) == '田中 太郎'
-            print('✓ BasicNameDivider test passed')
+            print('[OK] BasicNameDivider test passed')
         except Exception as e:
-            print(f'✗ BasicNameDivider failed: {e}')
+            print(f'[ERROR] BasicNameDivider failed: {e}')
             raise
         
         # Test GBDT divider  
         try:
             print('Creating GBDTNameDivider...')
             gbdt = namedivider_rust.GBDTNameDivider()
-            print('✓ GBDTNameDivider created')
+            print('[OK] GBDTNameDivider created')
             result2 = gbdt.divide_name('佐藤花子')
             print(f'GBDT result: {result2}')
             assert str(result2) == '佐藤 花子'
-            print('✓ GBDTNameDivider test passed')
+            print('[OK] GBDTNameDivider test passed')
         except Exception as e:
-            print(f'✗ GBDTNameDivider failed: {e}')
+            print(f'[ERROR] GBDTNameDivider failed: {e}')
             raise
         
-        print('✓ All tests passed on Windows with Python 3.11!')
+        print('[OK] All tests passed on Windows with Python 3.11!')
         "
       shell: powershell
