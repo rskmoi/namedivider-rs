@@ -57,8 +57,10 @@ jobs:
         $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_7
         $result += Remove-NewlineIfNeeded $env:FAMILY_NAMES_PART_8
         
-        # Write to file without BOM (UTF8 encoding like Linux)
-        [System.IO.File]::WriteAllText("secret\family_names.txt", $result, [System.Text.UTF8Encoding]::new($false))
+        # Write to file without BOM and ensure no extra newline at end (UTF8 encoding like Linux)
+        # Use WriteAllText with explicit content control to match Linux behavior
+        $finalResult = $result.TrimEnd("`r", "`n")  # Ensure no trailing newlines
+        [System.IO.File]::WriteAllText("secret\family_names.txt", $finalResult, [System.Text.UTF8Encoding]::new($false))
         
         # Copy to required locations
         Copy-Item "secret\family_names.txt" "namedivider-rs\family_names.txt"
@@ -98,21 +100,27 @@ jobs:
 
     - name: Verify family_names.txt reconstruction
       run: |
-        $lineCount = (Get-Content "namedivider-rs\family_names.txt" | Measure-Object -Line).Lines
+        # Use newline character counting (Linux wc -l equivalent) for consistent results
+        $content = Get-Content "namedivider-rs\family_names.txt" -Raw
+        $newlineChar = [char]10
+        $lineCount = ($content.ToCharArray() | Where-Object { $_ -eq $newlineChar }).Count
+        
         if ($lineCount -eq 39999) {
-          Write-Host "✓ File reconstruction successful ($lineCount lines)"
+          Write-Host "[OK] File reconstruction successful ($lineCount lines, wc -l equivalent)"
         } else {
-          Write-Host "✗ File reconstruction failed: got $lineCount lines, expected 39999"
+          Write-Host "[ERROR] File reconstruction failed: got $lineCount lines, expected 39999"
+          Write-Host "Debug info: File ends with newline: $($content.EndsWith($newlineChar))"
+          Write-Host "Debug info: File ends with CRLF: $($content.EndsWith([char]13 + [char]10))"
           exit 1
         }
       shell: powershell
 
     - name: Initialize Git submodules
       run: |
-        echo "=== Initializing Git submodules ==="
+        Write-Host "=== Initializing Git submodules ==="
         git submodule update --init --recursive
-        echo "✓ Submodules initialized"
-      shell: bash
+        Write-Host "[OK] Submodules initialized"
+      shell: powershell
 
     - name: Install Python dependencies
       run: |
@@ -121,7 +129,116 @@ jobs:
 
     - name: Build wheel with maturin
       working-directory: python
+      env:
+        # Rustコンパイラとmaturinでのエンコーディング設定
+        PYTHONUTF8: 1
+        PYTHONIOENCODING: utf-8
+        RUST_LOG: info
+        # Windows環境でのUnicode処理強化
+        RUST_BACKTRACE: 1
+        # PowerShell出力エンコーディング固定
+        POWERSHELL_TELEMETRY_OPTOUT: 1
       run: |
+        # PowerShell環境の安定化とUTF-8統一設定
+        $ErrorActionPreference = "Stop"
+        $ProgressPreference = "SilentlyContinue"
+        
+        # エンコーディング統一
+        $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+        
+        # 文字化け防止のための.NET設定
+        [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
+        [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::InvariantCulture
+        
+        Write-Host "=== PowerShell Environment Configuration ==="
+        Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+        Write-Host "Console Output Encoding: $([Console]::OutputEncoding.EncodingName)"
+        Write-Host "Current Culture: $([System.Threading.Thread]::CurrentThread.CurrentCulture.Name)"
+        
+        Write-Host "=== Ensuring UTF-8 encoding for Rust embedded assets ==="
+        
+        # gbdt_model_v1.txtファイルの安全なUTF-8処理
+        $modelFile = "../namedivider-rs/src/assets/gbdt_model_v1.txt"
+        Write-Host "Model file path: $modelFile"
+        Write-Host "Model file exists: $(Test-Path $modelFile)"
+        
+        if (Test-Path $modelFile) {
+          # 元ファイルのバックアップを作成
+          $backupFile = "$modelFile.backup"
+          Copy-Item $modelFile $backupFile -Force
+          Write-Host "✓ Created backup: $backupFile"
+          
+          # ファイル情報を確認
+          $fileInfo = Get-Item $modelFile
+          Write-Host "Original file size: $($fileInfo.Length) bytes"
+          
+          # より安全なファイル読み込み（バイト配列経由）
+          try {
+            # Step 1: バイト配列として読み込み
+            $fileBytes = [System.IO.File]::ReadAllBytes($modelFile)
+            Write-Host "✓ Read file as byte array: $($fileBytes.Length) bytes"
+            
+            # Step 2: UTF-8デコーダーで安全に変換
+            $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true)  # BOM無し、厳密モード
+            $content = $utf8Decoder.GetString($fileBytes)
+            Write-Host "✓ Successfully decoded as UTF-8"
+            
+            # Step 3: ファイル形式検証
+            $lines = $content -split '[\r\n]+' | Where-Object { $_.Trim() -ne '' }
+            $firstLine = $lines[0].Trim()
+            Write-Host "First line: '$firstLine'"
+            
+            if ($firstLine -eq "tree") {
+              Write-Host "✓ Model file format is correct (starts with 'tree')"
+            } else {
+              Write-Host "❌ Model file format unexpected"
+              Write-Host "Expected: 'tree', Got: '$firstLine'"
+              throw "Invalid model file format"
+            }
+            
+            # Step 4: ファイル整合性チェック
+            $treeCount = ($content | Select-String -Pattern "^Tree=" -AllMatches).Matches.Count
+            $linesCount = $lines.Count
+            Write-Host "✓ Found $treeCount trees, $linesCount total lines"
+            
+            # Step 5: 正規化された改行コードでUTF-8保存
+            $normalizedContent = $content -replace '\r\n', "`n" -replace '\r', "`n"
+            $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom)
+            Write-Host "✓ File re-saved with normalized UTF-8 encoding"
+            
+            # Step 6: 保存後検証
+            $newSize = (Get-Item $modelFile).Length
+            Write-Host "New file size: $newSize bytes"
+            
+            # Step 7: MD5ハッシュで整合性確認
+            $originalHash = (Get-FileHash $backupFile -Algorithm MD5).Hash
+            $newHash = (Get-FileHash $modelFile -Algorithm MD5).Hash
+            Write-Host "Original hash: $originalHash"
+            Write-Host "New hash: $newHash"
+            
+            if ($originalHash -eq $newHash) {
+              Write-Host "✓ File content unchanged (same hash)"
+            } else {
+              Write-Host "⚠ File content modified (hash changed - this is expected for encoding normalization)"
+            }
+            
+          } catch {
+            Write-Host "❌ Error during file processing: $($_.Exception.Message)"
+            # バックアップから復元
+            Copy-Item $backupFile $modelFile -Force
+            Write-Host "✓ Restored from backup"
+            throw $_
+          }
+          
+        } else {
+          Write-Host "❌ Model file not found: $modelFile"
+          exit 1
+        }
+        
+        Write-Host "=== Building wheel with maturin ==="
         python -m maturin build --release --out ../dist/
 
     - name: Upload wheel
@@ -139,45 +256,66 @@ jobs:
         Get-ChildItem dist\*.whl
         
         Write-Host "Installing wheel:"
-        $wheelFile = Get-ChildItem dist\*.whl | Select-Object -First 1
-        if ($wheelFile) {
-          python -m pip install --force-reinstall $wheelFile.FullName
-        } else {
-          Write-Host "✗ No wheel file found"
+        Write-Host "Current directory: $(Get-Location)"
+        Write-Host "Checking for wheel files..."
+        
+        try {
+          $wheelFiles = Get-ChildItem dist\*.whl -ErrorAction Stop
+          Write-Host "Found $($wheelFiles.Count) wheel file(s)"
+          
+          if ($wheelFiles -and $wheelFiles.Count -gt 0) {
+            $wheelFile = $wheelFiles | Select-Object -First 1
+            Write-Host "Selected wheel: $($wheelFile.FullName)"
+            Write-Host "Installing wheel..."
+            python -m pip install --force-reinstall $wheelFile.FullName
+          } else {
+            Write-Host "[ERROR] No wheel files found in array"
+            exit 1
+          }
+        } catch {
+          Write-Host "[ERROR] Failed to find wheel files: $($_.Exception.Message)"
+          Write-Host "Directory contents:"
+          Get-ChildItem dist\ -ErrorAction SilentlyContinue
           exit 1
         }
         
         Write-Host "Testing functionality..."
+      shell: powershell
+
+    - name: Test Python functionality with Japanese characters
+      env:
+        RUST_BACKTRACE: 1
+        PYTHONIOENCODING: utf-8
+        PYTHONUTF8: 1
+      run: |
+        echo "=== Testing namedivider functionality ==="
+        
+        # Set locale for UTF-8 (Bash approach)
+        export LANG=en_US.UTF-8
+        export LC_ALL=en_US.UTF-8
+        
+        # Test basic import
+        python -c "import namedivider_rust; print('[OK] Module imported successfully')"
+        
+        # Test BasicNameDivider
         python -c "
         import namedivider_rust
-        print('✓ Module imported successfully')
-        
-        # Test Basic divider
-        try:
-            print('Creating BasicNameDivider...')
-            basic = namedivider_rust.BasicNameDivider()
-            print('✓ BasicNameDivider created')
-            result1 = basic.divide_name('田中太郎')
-            print(f'Basic result: {result1}')
-            assert str(result1) == '田中 太郎'
-            print('✓ BasicNameDivider test passed')
-        except Exception as e:
-            print(f'✗ BasicNameDivider failed: {e}')
-            raise
-        
-        # Test GBDT divider  
-        try:
-            print('Creating GBDTNameDivider...')
-            gbdt = namedivider_rust.GBDTNameDivider()
-            print('✓ GBDTNameDivider created')
-            result2 = gbdt.divide_name('佐藤花子')
-            print(f'GBDT result: {result2}')
-            assert str(result2) == '佐藤 花子'
-            print('✓ GBDTNameDivider test passed')
-        except Exception as e:
-            print(f'✗ GBDTNameDivider failed: {e}')
-            raise
-        
-        print('✓ All tests passed on Windows with Python 3.11!')
+        basic = namedivider_rust.BasicNameDivider()
+        result = basic.divide_name('田中太郎')
+        print(f'Basic result: {result}')
+        assert str(result) == '田中 太郎'
+        print('[OK] BasicNameDivider test passed')
         "
-      shell: powershell
+        
+        # Test GBDTNameDivider  
+        python -c "
+        import namedivider_rust
+        gbdt = namedivider_rust.GBDTNameDivider()
+        result = gbdt.divide_name('佐藤花子')
+        print(f'GBDT result: {result}')
+        assert str(result) == '佐藤 花子'
+        print('[OK] GBDTNameDivider test passed')
+        "
+        
+        echo "[OK] All tests passed on Windows with Python 3.11!"
+      shell: bash
