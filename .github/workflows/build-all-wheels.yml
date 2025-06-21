@@ -153,19 +153,7 @@ jobs:
         
         # Test the wheels
         CIBW_TEST_COMMAND: >
-          python -c "
-          import namedivider_rust;
-          print('✓ Module imported successfully');
-          basic = namedivider_rust.BasicNameDivider();
-          result1 = basic.divide_name('田中太郎');
-          assert str(result1) == '田中 太郎';
-          print('✓ BasicNameDivider test passed');
-          gbdt = namedivider_rust.GBDTNameDivider();
-          result2 = gbdt.divide_name('佐藤花子');
-          assert str(result2) == '佐藤 花子';
-          print('✓ GBDTNameDivider test passed');
-          print('✓ All tests passed!');
-          "
+          python -c "import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
         
         # Skip PyPy builds
         CIBW_SKIP: "pp*"
