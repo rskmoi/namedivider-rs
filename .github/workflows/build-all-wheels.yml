@@ -89,17 +89,19 @@ jobs:
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
         CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
         
-        # Linux-specific setup
+        # Linux manylinux setup
         CIBW_BEFORE_ALL_LINUX: >
           echo "=== Installing build dependencies ===" &&
-          if command -v apk >/dev/null 2>&1; then
-            echo "Detected: musllinux (Alpine)" &&
-            apk add --no-cache cmake clang-dev llvm-dev build-base
-          else
-            echo "Detected: manylinux" &&
-            yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel &&
-            ln -sf /usr/bin/cmake3 /usr/bin/cmake
-          fi &&
+          yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel &&
+          ln -sf /usr/bin/cmake3 /usr/bin/cmake &&
+          echo "=== Installing Rust ===" &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+          source $HOME/.cargo/env
+        
+        # Linux musllinux setup  
+        CIBW_BEFORE_ALL_MUSLLINUX: >
+          echo "=== Installing build dependencies (Alpine) ===" &&
+          apk add --no-cache cmake clang-dev llvm-dev build-base &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
