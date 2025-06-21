@@ -150,19 +150,7 @@ jobs:
         
         # Windows-specific GBDT file fix in build step
         CIBW_BEFORE_BUILD_WINDOWS: >
-          powershell -Command "
-          $ErrorActionPreference = 'Stop';
-          $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt';
-          if (Test-Path $modelFile) {
-            $fileBytes = [System.IO.File]::ReadAllBytes($modelFile);
-            $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true);
-            $content = $utf8Decoder.GetString($fileBytes);
-            $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\";
-            $utf8NoBom = [System.Text.UTF8Encoding]::new($false);
-            [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom);
-            Write-Host 'GBDT model file UTF-8 encoding fixed';
-          }
-          " &&
+          powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
           pip install maturin
         
         CIBW_ENVIRONMENT_MACOS: >
