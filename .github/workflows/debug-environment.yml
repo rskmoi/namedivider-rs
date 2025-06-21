@@ -265,6 +265,15 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Reconstruct family_names.txt (Windows)
+      env:
+        FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
+        FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
+        FAMILY_NAMES_PART_3: ${{ secrets.FAMILY_NAMES_PART_3 }}
+        FAMILY_NAMES_PART_4: ${{ secrets.FAMILY_NAMES_PART_4 }}
+        FAMILY_NAMES_PART_5: ${{ secrets.FAMILY_NAMES_PART_5 }}
+        FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
+        FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
+        FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
       run: |
         New-Item -ItemType Directory -Path "secret" -Force
         
@@ -284,15 +293,22 @@ jobs:
           return $content
         }
         
-        # Simulate secrets with dummy data
-        $env:FAMILY_NAMES_PART_1 = "dummy1`ndummy2"
-        $env:FAMILY_NAMES_PART_2 = "dummy3`ndummy4"
-        $env:FAMILY_NAMES_PART_3 = "dummy5`ndummy6"
-        $env:FAMILY_NAMES_PART_4 = "dummy7`ndummy8"
-        $env:FAMILY_NAMES_PART_5 = "dummy9`ndummy10"
-        $env:FAMILY_NAMES_PART_6 = "dummy11`ndummy12"
-        $env:FAMILY_NAMES_PART_7 = "dummy13`ndummy14"
-        $env:FAMILY_NAMES_PART_8 = "dummy15"  # Last part without newline
+        # Use real secrets to debug the actual issue
+        Write-Host "=== Using Real Secrets ==="
+        Write-Host "PART_1 length: $($env:FAMILY_NAMES_PART_1.Length)"
+        Write-Host "PART_2 length: $($env:FAMILY_NAMES_PART_2.Length)"
+        Write-Host "PART_3 length: $($env:FAMILY_NAMES_PART_3.Length)"
+        Write-Host "PART_4 length: $($env:FAMILY_NAMES_PART_4.Length)"
+        Write-Host "PART_5 length: $($env:FAMILY_NAMES_PART_5.Length)"
+        Write-Host "PART_6 length: $($env:FAMILY_NAMES_PART_6.Length)"
+        Write-Host "PART_7 length: $($env:FAMILY_NAMES_PART_7.Length)"
+        Write-Host "PART_8 length: $($env:FAMILY_NAMES_PART_8.Length)"
+        
+        # Check ending characters of each part
+        Write-Host "PART_1 ends with LF: $($env:FAMILY_NAMES_PART_1.EndsWith([char]10))"
+        Write-Host "PART_1 ends with CRLF: $($env:FAMILY_NAMES_PART_1.EndsWith([char]13 + [char]10))"
+        Write-Host "PART_8 ends with LF: $($env:FAMILY_NAMES_PART_8.EndsWith([char]10))"
+        Write-Host "PART_8 ends with CRLF: $($env:FAMILY_NAMES_PART_8.EndsWith([char]13 + [char]10))"
         
         # Direct sequential output approach for perfect reconstruction (same as Linux)
         $result = ""
