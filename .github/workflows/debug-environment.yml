@@ -357,10 +357,23 @@ jobs:
         $allLines = $content -split $newlineChar
         $lineCount3 = $allLines.Count
         Write-Host "Method 3 (Split all): $lineCount3 lines"
+        
+        # Method 4: Count newline characters (Linux wc -l equivalent)
+        $newlineCount = ($content.ToCharArray() | Where-Object { $_ -eq [char]10 }).Count
+        Write-Host "Method 4 (Newline count, wc -l equivalent): $newlineCount lines"
+        
+        # Method 5: Count CRLF + LF characters
+        $crlfCount = ($content.ToCharArray() | Where-Object { $_ -eq [char]13 }).Count
+        Write-Host "Method 5 (CRLF count): $crlfCount"
+        
         Write-Host "Last line content: '$($allLines[-1])'"
         if ($allLines.Count -gt 1) {
           Write-Host "Second to last line content: '$($allLines[-2])'"
         }
+        
+        Write-Host "=== Linux vs Windows Comparison ==="
+        Write-Host "Expected Linux result (wc -l): $newlineCount"
+        Write-Host "Current Windows result: $lineCount2"
         
         Write-Host "=== Expected: 15 lines (dummy1 through dummy15) ==="
       shell: powershell
