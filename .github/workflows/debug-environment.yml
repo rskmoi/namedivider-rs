@@ -196,6 +196,10 @@ jobs:
       run: |
         echo "=== Testing Rust Linking Simulation ==="
         
+        # Initialize Git submodules for lightgbm dependency
+        echo "Initializing Git submodules..."
+        git submodule update --init --recursive
+        
         # Create minimal Rust project
         mkdir -p test-rust-openmp
         cd test-rust-openmp
