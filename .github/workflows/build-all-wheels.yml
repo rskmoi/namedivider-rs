@@ -78,10 +78,7 @@ jobs:
         FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v2.16.2
-      with:
-        package-dir: python
-        output-dir: wheelhouse
+      uses: pypa/cibuildwheel@v2.17.0
       env:
         # Build all Python versions 3.9-3.13
         CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
@@ -107,13 +104,13 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
         
-        # Windows-specific setup
+        # Windows-specific setup  
         CIBW_BEFORE_ALL_WINDOWS: >
           echo "=== Installing build dependencies ===" &&
           choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
           echo "=== Installing Rust ===" &&
           curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
-          source ~/.cargo/env
+          source "$USERPROFILE/.cargo/env"
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
@@ -138,7 +135,7 @@ jobs:
           PYTHONUTF8=1
           PYTHONIOENCODING=utf-8
           RUST_BACKTRACE=1
-          PATH="$USERPROFILE/.cargo/bin;$PATH"
+          PATH="$USERPROFILE\\.cargo\\bin;$PATH"
         
         CIBW_ENVIRONMENT_MACOS: >
           LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
