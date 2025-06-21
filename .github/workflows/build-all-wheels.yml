@@ -1,0 +1,254 @@
+name: Build All Wheels (20 Environments)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Reconstruct family_names.txt
+      shell: bash
+      run: |
+        mkdir -p secret
+        
+        # Function to add newline if needed
+        add_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" != *$'\n' ]]; then
+            printf "%s\n" "$content"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Function to remove newline if needed  
+        remove_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" == *$'\n' ]]; then
+            printf "%s" "${content%$'\n'}"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Direct sequential output approach for perfect reconstruction
+        {
+          printf "%s" "${FAMILY_NAMES_PART_1}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_2}" | add_newline_if_needed  
+          printf "%s" "${FAMILY_NAMES_PART_3}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_4}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_5}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_6}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_7}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_8}" | remove_newline_if_needed
+        } > secret/family_names.txt
+        
+        cp secret/family_names.txt namedivider-rs/family_names.txt
+        cp secret/family_names.txt namedivider-rs/src/assets/family_names.txt
+        
+        # Verify reconstruction
+        line_count=$(wc -l < namedivider-rs/family_names.txt)
+        if [ "$line_count" -eq 39999 ]; then
+          echo "✓ family_names.txt reconstruction successful ($line_count lines)"
+        else
+          echo "✗ family_names.txt reconstruction failed: got $line_count lines, expected 39999"
+          exit 1
+        fi
+      env:
+        FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
+        FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
+        FAMILY_NAMES_PART_3: ${{ secrets.FAMILY_NAMES_PART_3 }}
+        FAMILY_NAMES_PART_4: ${{ secrets.FAMILY_NAMES_PART_4 }}
+        FAMILY_NAMES_PART_5: ${{ secrets.FAMILY_NAMES_PART_5 }}
+        FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
+        FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
+        FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
+
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v2.16.2
+      with:
+        package-dir: python/
+        output-dir: wheelhouse/
+      env:
+        # Build all Python versions 3.9-3.13
+        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+        
+        # Platform-specific configurations
+        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
+        CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
+        CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
+        CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
+        
+        # Linux-specific setup
+        CIBW_BEFORE_ALL_LINUX: >
+          echo "=== Installing build dependencies ===" &&
+          if command -v apk >/dev/null 2>&1; then
+            echo "Detected: musllinux (Alpine)" &&
+            apk add --no-cache cmake clang-dev llvm-dev build-base
+          else
+            echo "Detected: manylinux" &&
+            yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel &&
+            ln -sf /usr/bin/cmake3 /usr/bin/cmake
+          fi &&
+          echo "=== Installing Rust ===" &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+          source $HOME/.cargo/env
+        
+        # Windows-specific setup
+        CIBW_BEFORE_ALL_WINDOWS: >
+          echo "=== Installing build dependencies ===" &&
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' &&
+          echo "=== Installing Rust ===" &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+          source $HOME/.cargo/env
+        
+        # macOS-specific setup
+        CIBW_BEFORE_ALL_MACOS: >
+          echo "=== Installing build dependencies ===" &&
+          if ! command -v cmake &> /dev/null; then
+            brew install cmake
+          fi &&
+          echo "Installing OpenMP (libomp) for LightGBM..." &&
+          brew install libomp &&
+          LIBOMP_PREFIX=$(brew --prefix libomp) &&
+          echo "OpenMP installed at: $LIBOMP_PREFIX" &&
+          echo "=== Installing Rust ===" &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+          source $HOME/.cargo/env
+        
+        # Environment for compilation
+        CIBW_ENVIRONMENT_LINUX: >
+          PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH"
+          LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
+        
+        CIBW_ENVIRONMENT_WINDOWS: >
+          PYTHONUTF8=1
+          PYTHONIOENCODING=utf-8
+          RUST_BACKTRACE=1
+          PATH="$HOME/.cargo/bin:$PATH"
+        
+        CIBW_ENVIRONMENT_MACOS: >
+          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
+          CPATH="$(brew --prefix libomp)/include:$CPATH"
+          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
+          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
+          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
+          PATH="$HOME/.cargo/bin:$PATH"
+        
+        # Build dependencies
+        CIBW_BEFORE_BUILD: pip install maturin
+        
+        # Test the wheels
+        CIBW_TEST_COMMAND: >
+          python -c "
+          import namedivider_rust;
+          print('✓ Module imported successfully');
+          basic = namedivider_rust.BasicNameDivider();
+          result1 = basic.divide_name('田中太郎');
+          assert str(result1) == '田中 太郎';
+          print('✓ BasicNameDivider test passed');
+          gbdt = namedivider_rust.GBDTNameDivider();
+          result2 = gbdt.divide_name('佐藤花子');
+          assert str(result2) == '佐藤 花子';
+          print('✓ GBDTNameDivider test passed');
+          print('✓ All tests passed!');
+          "
+        
+        # Skip PyPy builds
+        CIBW_SKIP: "pp*"
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v4
+      with:
+        name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+        path: wheelhouse/*.whl
+
+  collect-wheels:
+    name: Collect and verify all wheels
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download all wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist/
+
+    - name: Display structure of downloaded files
+      run: |
+        ls -la dist/
+        find dist/ -name "*.whl" -type f | sort
+
+    - name: Verify wheel count and naming
+      run: |
+        echo "=== Wheel Verification ==="
+        
+        # Count total wheels
+        total_wheels=$(find dist/ -name "*.whl" -type f | wc -l)
+        echo "Total wheels built: $total_wheels"
+        echo "Expected: 20 wheels (5 Python versions × 4 platforms)"
+        
+        # List wheels by platform
+        echo ""
+        echo "=== Wheels by Platform ==="
+        
+        echo "Linux wheels:"
+        find dist/ -name "*linux*.whl" -type f | sort
+        linux_count=$(find dist/ -name "*linux*.whl" -type f | wc -l)
+        echo "Linux wheels count: $linux_count"
+        
+        echo ""
+        echo "Windows wheels:"
+        find dist/ -name "*win*.whl" -type f | sort
+        windows_count=$(find dist/ -name "*win*.whl" -type f | wc -l)
+        echo "Windows wheels count: $windows_count"
+        
+        echo ""
+        echo "macOS wheels:"
+        find dist/ -name "*macos*.whl" -type f | sort
+        macos_count=$(find dist/ -name "*macos*.whl" -type f | wc -l)
+        echo "macOS wheels count: $macos_count"
+        
+        # Verify Python versions
+        echo ""
+        echo "=== Wheels by Python Version ==="
+        for py_ver in cp39 cp310 cp311 cp312 cp313; do
+          count=$(find dist/ -name "*${py_ver}*" -type f | wc -l)
+          echo "Python ${py_ver#cp}: $count wheels"
+        done
+        
+        # Summary
+        echo ""
+        echo "=== Summary ==="
+        if [ "$total_wheels" -eq 20 ]; then
+          echo "✅ SUCCESS: All 20 wheels built successfully!"
+        else
+          echo "❌ WARNING: Expected 20 wheels, got $total_wheels"
+        fi
+
+    - name: Upload combined wheels
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-wheels-unified
+        path: dist/*/*.whl
+
+    - name: Upload to PyPI (if tagged release)
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        packages_dir: dist/*/

@@ -1,0 +1,171 @@
+name: Test Build (Single Environment)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    name: Test build on ubuntu-latest with Python 3.11
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: 1.75.0
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake
+
+    - name: Reconstruct family_names.txt
+      run: |
+        mkdir -p secret
+        
+        # Function to add newline if needed
+        add_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" != *$'\n' ]]; then
+            printf "%s\n" "$content"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Function to remove newline if needed  
+        remove_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" == *$'\n' ]]; then
+            printf "%s" "${content%$'\n'}"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Direct sequential output approach for perfect reconstruction
+        {
+          printf "%s" "${FAMILY_NAMES_PART_1}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_2}" | add_newline_if_needed  
+          printf "%s" "${FAMILY_NAMES_PART_3}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_4}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_5}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_6}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_7}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_8}" | remove_newline_if_needed
+        } > secret/family_names.txt
+        
+        cp secret/family_names.txt namedivider-rs/family_names.txt
+        cp secret/family_names.txt namedivider-rs/src/assets/family_names.txt
+      env:
+        FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
+        FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
+        FAMILY_NAMES_PART_3: ${{ secrets.FAMILY_NAMES_PART_3 }}
+        FAMILY_NAMES_PART_4: ${{ secrets.FAMILY_NAMES_PART_4 }}
+        FAMILY_NAMES_PART_5: ${{ secrets.FAMILY_NAMES_PART_5 }}
+        FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
+        FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
+        FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
+
+    - name: Verify family_names.txt reconstruction
+      run: |
+        line_count=$(wc -l < namedivider-rs/family_names.txt)
+        if [ "$line_count" -eq 39999 ]; then
+          echo "✓ File reconstruction successful ($line_count lines)"
+        else
+          echo "✗ File reconstruction failed: got $line_count lines, expected 39999"
+          exit 1
+        fi
+
+    - name: Initialize Git submodules
+      run: |
+        git submodule update --init --recursive
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install cibuildwheel
+
+    - name: Build wheel with cibuildwheel
+      run: |
+        # Build single wheel for testing
+        export CIBW_BUILD="cp311-manylinux_x86_64"
+        export CIBW_MANYLINUX_X86_64_IMAGE="quay.io/pypa/manylinux2014_x86_64"
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_BEFORE_ALL_LINUX='
+          echo "=== Installing build dependencies ==="
+          yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
+          ln -sf /usr/bin/cmake3 /usr/bin/cmake
+          echo "=== Installing Rust ==="
+          curl --proto '\''=https'\'' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+          source $HOME/.cargo/env
+        '
+        export CIBW_BEFORE_BUILD="pip install maturin"
+        
+        echo "=== cibuildwheel Configuration ==="
+        echo "CIBW_BUILD: $CIBW_BUILD"
+        echo "CIBW_MANYLINUX_X86_64_IMAGE: $CIBW_MANYLINUX_X86_64_IMAGE"
+        
+        # Run cibuildwheel
+        python -m cibuildwheel python/ --output-dir dist/
+
+    - name: Upload test wheel
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-wheel-ubuntu-py311
+        path: dist/*.whl
+
+    - name: Test wheel installation and functionality
+      env:
+        RUST_BACKTRACE: 1
+      run: |
+        echo "=== Testing wheel installation ==="
+        echo "Available wheels:"
+        ls -la dist/*.whl
+        
+        # Install the wheel
+        python -m pip install --force-reinstall dist/*.whl
+        echo "✓ Wheel installed successfully"
+        
+        # Test functionality
+        python -c "
+        import namedivider_rust
+        print('✓ Module imported successfully')
+        
+        # Test Basic divider
+        basic = namedivider_rust.BasicNameDivider()
+        result1 = basic.divide_name('田中太郎')
+        print(f'Basic result: {result1}')
+        assert str(result1) == '田中 太郎'
+        print('✓ BasicNameDivider test passed')
+        
+        # Test GBDT divider  
+        gbdt = namedivider_rust.GBDTNameDivider()
+        result2 = gbdt.divide_name('佐藤花子')
+        print(f'GBDT result: {result2}')
+        assert str(result2) == '佐藤 花子'
+        print('✓ GBDTNameDivider test passed')
+        
+        print('✓ All functionality tests passed!')
+        "
+
+    - name: Build Summary
+      run: |
+        echo "=== Build Summary ==="
+        echo "✅ Environment: ubuntu-latest + Python 3.11"
+        echo "✅ family_names.txt reconstruction: PASSED"
+        echo "✅ Wheel build with cibuildwheel: PASSED"
+        echo "✅ Wheel installation: PASSED"
+        echo "✅ Functionality tests: PASSED"
+        echo ""
+        echo "🎉 Single environment build test completed successfully!"
+        echo "Ready to proceed with multi-environment build."
