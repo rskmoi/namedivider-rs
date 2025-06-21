@@ -98,6 +98,9 @@ jobs:
           if command -v apk >/dev/null 2>&1; then
             echo "Detected: musllinux (Alpine)"
             apk add --no-cache cmake clang-dev llvm-dev build-base
+            echo "=== Finding libclang on Alpine ==="
+            find /usr -name "*libclang*" -type f 2>/dev/null | head -5
+            export LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"
           else
             echo "Detected: manylinux"
             # Fix CentOS 7 repository issues
@@ -106,78 +109,26 @@ jobs:
             yum install -y libatomic || true
             yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
             ln -sf /usr/bin/cmake3 /usr/bin/cmake
+            echo "=== Finding libclang on manylinux ==="
+            find /opt/rh/llvm-toolset-7 -name "*libclang*" -type f 2>/dev/null | head -5
+            export LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
+            export LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:$LD_LIBRARY_PATH"
           fi
           
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
+          
+          echo "=== Final environment check ==="
+          echo "LIBCLANG_PATH: $LIBCLANG_PATH"
+          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
         
-        # Windows-specific setup  
-        CIBW_BEFORE_ALL_WINDOWS: |
-          echo "=== Installing build dependencies ==="
-          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System"
-          echo "=== Installing Rust ==="
+        # Windows-specific setup (copy exact pattern from test-windows-wheel.yml)
+        CIBW_BEFORE_ALL_WINDOWS: >
+          echo "=== Installing build dependencies ===" &&
+          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
+          echo "=== Installing Rust ===" &&
           curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
-          echo "=== Fixing UTF-8 encoding for GBDT model file ==="
-          powershell -Command "
-          # PowerShell環境の安定化とUTF-8統一設定
-          $ErrorActionPreference = 'Stop'
-          $ProgressPreference = 'SilentlyContinue'
-          $PSDefaultParameterValues['*:Encoding'] = 'utf8'
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-          [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
-          [System.Threading.Thread]::CurrentThread.CurrentUICulture = [System.Globalization.CultureInfo]::InvariantCulture
-          
-          $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'
-          Write-Host 'Model file path: $modelFile'
-          Write-Host 'Model file exists: $(Test-Path $modelFile)'
-          
-          if (Test-Path $modelFile) {
-            $backupFile = '$modelFile.backup'
-            Copy-Item $modelFile $backupFile -Force
-            Write-Host 'Created backup: $backupFile'
-            
-            try {
-              # バイト配列として読み込み
-              $fileBytes = [System.IO.File]::ReadAllBytes($modelFile)
-              Write-Host 'Read file as byte array: $($fileBytes.Length) bytes'
-              
-              # UTF-8デコーダーで安全に変換
-              $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true)
-              $content = $utf8Decoder.GetString($fileBytes)
-              Write-Host 'Successfully decoded as UTF-8'
-              
-              # ファイル形式検証
-              $lines = $content -split '[\r\n]+' | Where-Object { $_.Trim() -ne '' }
-              $firstLine = $lines[0].Trim()
-              Write-Host 'First line: $firstLine'
-              
-              if ($firstLine -eq 'tree') {
-                Write-Host 'Model file format is correct (starts with tree)'
-              } else {
-                Write-Host 'Model file format unexpected'
-                Write-Host 'Expected: tree, Got: $firstLine'
-                throw 'Invalid model file format'
-              }
-              
-              # 正規化された改行コードでUTF-8保存
-              $normalizedContent = $content -replace '\r\n', '`n' -replace '\r', '`n'
-              $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-              [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom)
-              Write-Host 'File re-saved with normalized UTF-8 encoding'
-              
-            } catch {
-              Write-Host 'Error during file processing: $($_.Exception.Message)'
-              Copy-Item $backupFile $modelFile -Force
-              Write-Host 'Restored from backup'
-              throw $_
-            }
-          } else {
-            Write-Host 'Model file not found: $modelFile'
-            exit 1
-          }
-          "
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
@@ -193,10 +144,10 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
         
-        # Environment for compilation
+        # Environment for compilation (ensure variables are exported properly)
         CIBW_ENVIRONMENT_LINUX: >
           PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH"
-          LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:/usr/lib/llvm20/lib"
+          LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
           LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:$LD_LIBRARY_PATH"
         
         CIBW_ENVIRONMENT_WINDOWS: >
@@ -204,6 +155,22 @@ jobs:
           PYTHONIOENCODING=utf-8
           RUST_BACKTRACE=1
           PATH="$USERPROFILE\\.cargo\\bin;$PATH"
+        
+        # Windows-specific GBDT file fix in build step
+        CIBW_BEFORE_BUILD_WINDOWS: >
+          powershell -Command "
+          $ErrorActionPreference = 'Stop';
+          $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt';
+          if (Test-Path $modelFile) {
+            $fileBytes = [System.IO.File]::ReadAllBytes($modelFile);
+            $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true);
+            $content = $utf8Decoder.GetString($fileBytes);
+            $normalizedContent = $content -replace '\\r\\n', '`n' -replace '\\r', '`n';
+            $utf8NoBom = [System.Text.UTF8Encoding]::new($false);
+            [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom);
+            Write-Host 'GBDT model file UTF-8 encoding fixed';
+          }" &&
+          pip install maturin
         
         CIBW_ENVIRONMENT_MACOS: >
           LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
@@ -216,8 +183,14 @@ jobs:
         # Build dependencies
         CIBW_BEFORE_BUILD: pip install maturin
         
-        # Test the wheels
-        CIBW_TEST_COMMAND: >
+        # Test the wheels (bash approach for Windows UTF-8 handling)
+        CIBW_TEST_COMMAND_WINDOWS: >
+          bash -c "export LANG=en_US.UTF-8; export LC_ALL=en_US.UTF-8; python -c \"import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')\""
+        
+        CIBW_TEST_COMMAND_LINUX: >
+          python -c "import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
+        
+        CIBW_TEST_COMMAND_MACOS: >
           python -c "import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
         
         # Skip PyPy builds and 32-bit architectures
