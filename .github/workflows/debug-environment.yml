@@ -99,20 +99,27 @@ jobs:
         echo "=== Installing OpenMP ==="
         brew install libomp
         
-        echo "=== OpenMP Installation Check ==="
-        if [[ "$(uname -m)" == "arm64" ]]; then
-          echo "ARM64 Mac - checking /opt/homebrew/"
-          ls -la /opt/homebrew/include/omp.h || echo "❌ omp.h not found"
-          ls -la /opt/homebrew/lib/libomp.* || echo "❌ libomp libraries not found"
-          echo "Homebrew lib directory contents:"
-          ls -la /opt/homebrew/lib/ | grep -i omp || echo "No OpenMP files found"
-        else
-          echo "Intel Mac - checking /usr/local/"
-          ls -la /usr/local/include/omp.h || echo "❌ omp.h not found"
-          ls -la /usr/local/lib/libomp.* || echo "❌ libomp libraries not found"
-          echo "Homebrew lib directory contents:"
-          ls -la /usr/local/lib/ | grep -i omp || echo "No OpenMP files found"
-        fi
+        echo "=== Detailed OpenMP Installation Check ==="
+        echo "Architecture: $(uname -m)"
+        
+        # Check what brew actually installed
+        echo "=== Brew info for libomp ==="
+        brew --prefix libomp || echo "libomp prefix not found"
+        brew list libomp | head -10 || echo "libomp files not listed"
+        
+        # Check all possible locations
+        echo "=== Searching for omp.h in all locations ==="
+        find /opt/homebrew -name "omp.h" 2>/dev/null || echo "Not found in /opt/homebrew"
+        find /usr/local -name "omp.h" 2>/dev/null || echo "Not found in /usr/local"
+        find /Library -name "omp.h" 2>/dev/null || echo "Not found in /Library"
+        
+        echo "=== Searching for libomp libraries ==="
+        find /opt/homebrew -name "*libomp*" 2>/dev/null | head -5 || echo "No libomp in /opt/homebrew"
+        find /usr/local -name "*libomp*" 2>/dev/null | head -5 || echo "No libomp in /usr/local"
+        
+        # Check what clang can see
+        echo "=== Clang include search paths ==="
+        echo | clang++ -E -Wp,-v - 2>&1 | grep "^ " || echo "Could not get clang search paths"
 
     - name: Test environment variables and linking
       run: |
@@ -155,13 +162,30 @@ jobs:
         }
         EOF
         
-        # Set compiler flags
-        if [[ "$(uname -m)" == "arm64" ]]; then
-          OPENMP_FLAGS="-I/opt/homebrew/include -L/opt/homebrew/lib -lomp"
+        # Find actual OpenMP installation path
+        echo "=== Finding actual OpenMP paths ==="
+        LIBOMP_PREFIX=$(brew --prefix libomp 2>/dev/null || echo "")
+        if [[ -n "$LIBOMP_PREFIX" && -f "$LIBOMP_PREFIX/include/omp.h" ]]; then
+          echo "✓ Found OpenMP at brew prefix: $LIBOMP_PREFIX"
+          OPENMP_INCLUDE="$LIBOMP_PREFIX/include"
+          OPENMP_LIB="$LIBOMP_PREFIX/lib"
         else
-          OPENMP_FLAGS="-I/usr/local/include -L/usr/local/lib -lomp"
+          echo "❌ OpenMP not found at brew prefix, searching manually..."
+          OMP_HEADER=$(find /opt/homebrew /usr/local -name "omp.h" 2>/dev/null | head -1)
+          if [[ -n "$OMP_HEADER" ]]; then
+            OPENMP_INCLUDE=$(dirname "$OMP_HEADER")
+            OPENMP_LIB=$(dirname "$OPENMP_INCLUDE")/lib
+            echo "✓ Found omp.h at: $OMP_HEADER"
+            echo "✓ Using include: $OPENMP_INCLUDE"
+            echo "✓ Using lib: $OPENMP_LIB"
+          else
+            echo "❌ Could not find omp.h anywhere"
+            exit 1
+          fi
         fi
         
+        # Set compiler flags with actual paths
+        OPENMP_FLAGS="-I$OPENMP_INCLUDE -L$OPENMP_LIB -lomp"
         echo "Compiling with: clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp"
         clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp
         
