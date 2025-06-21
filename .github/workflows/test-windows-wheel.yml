@@ -171,36 +171,36 @@ jobs:
         }
         
         Write-Host "Testing functionality..."
+      shell: powershell
+
+    - name: Test Python functionality with Japanese characters
+      env:
+        RUST_BACKTRACE: 1
+      run: |
+        echo "=== Testing namedivider functionality ==="
+        
+        # Test basic import
+        python -c "import namedivider_rust; print('[OK] Module imported successfully')"
+        
+        # Test BasicNameDivider
         python -c "
         import namedivider_rust
-        print('[OK] Module imported successfully')
-        
-        # Test Basic divider
-        try:
-            print('Creating BasicNameDivider...')
-            basic = namedivider_rust.BasicNameDivider()
-            print('[OK] BasicNameDivider created')
-            result1 = basic.divide_name('田中太郎')
-            print(f'Basic result: {result1}')
-            assert str(result1) == '田中 太郎'
-            print('[OK] BasicNameDivider test passed')
-        except Exception as e:
-            print(f'[ERROR] BasicNameDivider failed: {e}')
-            raise
-        
-        # Test GBDT divider  
-        try:
-            print('Creating GBDTNameDivider...')
-            gbdt = namedivider_rust.GBDTNameDivider()
-            print('[OK] GBDTNameDivider created')
-            result2 = gbdt.divide_name('佐藤花子')
-            print(f'GBDT result: {result2}')
-            assert str(result2) == '佐藤 花子'
-            print('[OK] GBDTNameDivider test passed')
-        except Exception as e:
-            print(f'[ERROR] GBDTNameDivider failed: {e}')
-            raise
-        
-        print('[OK] All tests passed on Windows with Python 3.11!')
+        basic = namedivider_rust.BasicNameDivider()
+        result = basic.divide_name('田中太郎')
+        print(f'Basic result: {result}')
+        assert str(result) == '田中 太郎'
+        print('[OK] BasicNameDivider test passed')
         "
-      shell: powershell
+        
+        # Test GBDTNameDivider  
+        python -c "
+        import namedivider_rust
+        gbdt = namedivider_rust.GBDTNameDivider()
+        result = gbdt.divide_name('佐藤花子')
+        print(f'GBDT result: {result}')
+        assert str(result) == '佐藤 花子'
+        print('[OK] GBDTNameDivider test passed')
+        "
+        
+        echo "[OK] All tests passed on Windows with Python 3.11!"
+      shell: bash
