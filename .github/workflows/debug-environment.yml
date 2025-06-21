@@ -377,3 +377,54 @@ jobs:
         
         Write-Host "=== Expected: 15 lines (dummy1 through dummy15) ==="
       shell: powershell
+
+  debug-windows-powershell-conditions:
+    name: Debug Windows PowerShell wheel file detection
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Test PowerShell wheel file detection logic
+      run: |
+        Write-Host "=== Testing PowerShell Wheel File Detection ==="
+        
+        # Create fake dist directory with dummy wheel file
+        New-Item -ItemType Directory -Path "dist" -Force
+        New-Item -ItemType File -Path "dist\namedivider_rust-0.2.0-cp311-cp311-win_amd64.whl" -Force
+        
+        Write-Host "=== Method 1: Original logic ==="
+        $wheelFile = Get-ChildItem dist\*.whl | Select-Object -First 1
+        Write-Host "wheelFile type: $($wheelFile.GetType().Name)"
+        Write-Host "wheelFile value: $wheelFile"
+        Write-Host "wheelFile FullName: $($wheelFile.FullName)"
+        if ($wheelFile) {
+          Write-Host "[OK] Method 1: Found wheel file"
+        } else {
+          Write-Host "[ERROR] Method 1: No wheel file found"
+        }
+        
+        Write-Host "=== Method 2: Improved logic ==="
+        $wheelFiles = Get-ChildItem dist\*.whl
+        Write-Host "wheelFiles type: $($wheelFiles.GetType().Name)"
+        Write-Host "wheelFiles count: $($wheelFiles.Count)"
+        if ($wheelFiles -and $wheelFiles.Count -gt 0) {
+          $wheelFile2 = $wheelFiles | Select-Object -First 1
+          Write-Host "[OK] Method 2: Found wheel file: $($wheelFile2.FullName)"
+        } else {
+          Write-Host "[ERROR] Method 2: No wheel file found"
+        }
+        
+        Write-Host "=== Method 3: Test-Path approach ==="
+        $wheelPattern = "dist\*.whl"
+        $wheelExists = Test-Path $wheelPattern
+        Write-Host "Test-Path result: $wheelExists"
+        if ($wheelExists) {
+          $wheelFile3 = Get-ChildItem dist\*.whl | Select-Object -First 1
+          Write-Host "[OK] Method 3: Found wheel file: $($wheelFile3.FullName)"
+        } else {
+          Write-Host "[ERROR] Method 3: No wheel file found"
+        }
+        
+        Write-Host "=== Direct file listing ==="
+        Get-ChildItem dist\
+      shell: powershell
