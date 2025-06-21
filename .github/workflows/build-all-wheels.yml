@@ -95,6 +95,8 @@ jobs:
         # Linux manylinux setup
         CIBW_BEFORE_ALL_LINUX: >
           echo "=== Installing build dependencies ===" &&
+          yum update -y &&
+          yum install -y centos-release-scl &&
           yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel &&
           ln -sf /usr/bin/cmake3 /usr/bin/cmake &&
           echo "=== Installing Rust ===" &&
@@ -114,8 +116,7 @@ jobs:
           echo "=== Installing build dependencies ===" &&
           choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
           echo "=== Installing Rust ===" &&
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
-          source "$USERPROFILE/.cargo/env"
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
