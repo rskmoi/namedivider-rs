@@ -133,6 +133,12 @@ jobs:
         fi
       shell: bash
 
+    - name: Initialize Git submodules
+      run: |
+        echo "=== Initializing Git submodules ==="
+        git submodule update --init --recursive
+        echo "✓ Submodules initialized"
+
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip

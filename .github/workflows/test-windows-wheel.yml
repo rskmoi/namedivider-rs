@@ -107,6 +107,13 @@ jobs:
         }
       shell: powershell
 
+    - name: Initialize Git submodules
+      run: |
+        echo "=== Initializing Git submodules ==="
+        git submodule update --init --recursive
+        echo "✓ Submodules initialized"
+      shell: bash
+
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
