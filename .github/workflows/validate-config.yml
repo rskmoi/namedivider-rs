@@ -19,10 +19,11 @@ jobs:
         # Check for FAMILY_NAMES_PART_1 through FAMILY_NAMES_PART_8
         for i in {1..8}; do
           var_name="FAMILY_NAMES_PART_$i"
-          if [[ -z "${!var_name:-}" ]]; then
+          var_value=$(eval echo "\$${var_name}")
+          if [[ -z "$var_value" ]]; then
             missing_vars+=("$var_name")
           else
-            echo "✓ $var_name is set (length: ${#!var_name} characters)"
+            echo "✓ $var_name is set (length: ${#var_value} characters)"
           fi
         done
         
