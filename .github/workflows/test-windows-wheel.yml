@@ -181,8 +181,9 @@ jobs:
       run: |
         echo "=== Testing namedivider functionality ==="
         
-        # Set console to UTF-8
-        chcp 65001
+        # Set locale for UTF-8 (Bash approach)
+        export LANG=en_US.UTF-8
+        export LC_ALL=en_US.UTF-8
         
         # Test basic import
         python -c "import namedivider_rust; print('[OK] Module imported successfully')"
