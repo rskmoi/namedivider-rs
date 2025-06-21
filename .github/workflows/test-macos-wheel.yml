@@ -34,24 +34,22 @@ jobs:
         echo "Installing OpenMP (libomp) for LightGBM..."
         brew install libomp
         
-        # Set environment variables for OpenMP
-        echo "Setting OpenMP environment variables..."
-        export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
-        export CPATH="/opt/homebrew/include:$CPATH"
-        export LDFLAGS="-L/opt/homebrew/lib $LDFLAGS"
-        export CPPFLAGS="-I/opt/homebrew/include $CPPFLAGS"
+        # Get actual OpenMP installation path
+        LIBOMP_PREFIX=$(brew --prefix libomp)
+        echo "OpenMP installed at: $LIBOMP_PREFIX"
         
-        # Also set for Intel Macs (x86_64)
-        if [[ "$(uname -m)" == "x86_64" ]]; then
-          export LIBRARY_PATH="/usr/local/lib:$LIBRARY_PATH"
-          export CPATH="/usr/local/include:$CPATH"
-          export LDFLAGS="-L/usr/local/lib $LDFLAGS"
-          export CPPFLAGS="-I/usr/local/include $CPPFLAGS"
-        fi
+        # Set environment variables for OpenMP using actual path
+        echo "Setting OpenMP environment variables..."
+        export LIBRARY_PATH="$LIBOMP_PREFIX/lib:$LIBRARY_PATH"
+        export CPATH="$LIBOMP_PREFIX/include:$CPATH"
+        export LDFLAGS="-L$LIBOMP_PREFIX/lib $LDFLAGS"
+        export CPPFLAGS="-I$LIBOMP_PREFIX/include $CPPFLAGS"
         
         echo "OpenMP installation completed"
         echo "LIBRARY_PATH=$LIBRARY_PATH"
         echo "CPATH=$CPATH"
+        echo "LDFLAGS=$LDFLAGS"
+        echo "CPPFLAGS=$CPPFLAGS"
 
     - name: Reconstruct family_names.txt
       run: |
@@ -142,19 +140,21 @@ jobs:
 
     - name: Build wheel with maturin
       working-directory: python
-      env:
-        LIBRARY_PATH: "/opt/homebrew/lib:/usr/local/lib"
-        CPATH: "/opt/homebrew/include:/usr/local/include"
-        LDFLAGS: "-L/opt/homebrew/lib -L/usr/local/lib"
-        CPPFLAGS: "-I/opt/homebrew/include -I/usr/local/include"
-        # Ensure Rust can find OpenMP for linking
-        RUSTFLAGS: "-L /opt/homebrew/lib -L /usr/local/lib"
-        # Alternative approach: set cargo config
-        CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS: "-L /opt/homebrew/lib"
-        CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS: "-L /usr/local/lib"
       run: |
+        # Get actual OpenMP installation path
+        LIBOMP_PREFIX=$(brew --prefix libomp)
+        echo "Using OpenMP path: $LIBOMP_PREFIX"
+        
+        # Set environment variables using actual path
+        export LIBRARY_PATH="$LIBOMP_PREFIX/lib:$LIBRARY_PATH"
+        export CPATH="$LIBOMP_PREFIX/include:$CPATH"
+        export LDFLAGS="-L$LIBOMP_PREFIX/lib $LDFLAGS"
+        export CPPFLAGS="-I$LIBOMP_PREFIX/include $CPPFLAGS"
+        export RUSTFLAGS="-L $LIBOMP_PREFIX/lib"
+        
         # Debug: Show environment variables
         echo "=== Build Environment Debug ==="
+        echo "LIBOMP_PREFIX: $LIBOMP_PREFIX"
         echo "LIBRARY_PATH: $LIBRARY_PATH"
         echo "CPATH: $CPATH"
         echo "LDFLAGS: $LDFLAGS"
@@ -162,30 +162,19 @@ jobs:
         echo "RUSTFLAGS: $RUSTFLAGS"
         echo "Architecture: $(uname -m)"
         
-        # Check if OpenMP libraries are available
+        # Check if OpenMP libraries are available at actual path
         echo "=== OpenMP Library Check ==="
-        if [[ "$(uname -m)" == "arm64" ]]; then
-          echo "ARM64 Mac detected, checking Homebrew OpenMP:"
-          ls -la /opt/homebrew/include/omp.h || echo "omp.h not found in /opt/homebrew/include/"
-          ls -la /opt/homebrew/lib/libomp.* || echo "libomp not found in /opt/homebrew/lib/"
-          echo "Setting ARM64 specific flags..."
-          export RUSTFLAGS="-L /opt/homebrew/lib"
-        else
-          echo "Intel Mac detected, checking OpenMP:"
-          ls -la /usr/local/include/omp.h || echo "omp.h not found in /usr/local/include/"
-          ls -la /usr/local/lib/libomp.* || echo "libomp not found in /usr/local/lib/"
-          echo "Setting x86_64 specific flags..."
-          export RUSTFLAGS="-L /usr/local/lib"
-        fi
+        ls -la "$LIBOMP_PREFIX/include/omp.h" || echo "omp.h not found at $LIBOMP_PREFIX/include/"
+        ls -la "$LIBOMP_PREFIX/lib/libomp."* || echo "libomp not found at $LIBOMP_PREFIX/lib/"
         
-        # Create cargo config to ensure proper linking
+        # Create cargo config with actual path
         mkdir -p .cargo
         cat > .cargo/config.toml << EOF
         [target.aarch64-apple-darwin]
-        rustflags = ["-L", "/opt/homebrew/lib"]
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
         
         [target.x86_64-apple-darwin]
-        rustflags = ["-L", "/usr/local/lib"]
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
         EOF
         
         echo "=== Cargo Config ==="
