@@ -117,10 +117,10 @@ jobs:
 
     - name: Initialize Git submodules
       run: |
-        echo "=== Initializing Git submodules ==="
+        Write-Host "=== Initializing Git submodules ==="
         git submodule update --init --recursive
-        echo "[OK] Submodules initialized"
-      shell: bash
+        Write-Host "[OK] Submodules initialized"
+      shell: powershell
 
     - name: Install Python dependencies
       run: |
@@ -147,11 +147,26 @@ jobs:
         Get-ChildItem dist\*.whl
         
         Write-Host "Installing wheel:"
-        $wheelFile = Get-ChildItem dist\*.whl | Select-Object -First 1
-        if ($wheelFile) {
-          python -m pip install --force-reinstall $wheelFile.FullName
-        } else {
-          Write-Host "[ERROR] No wheel file found"
+        Write-Host "Current directory: $(Get-Location)"
+        Write-Host "Checking for wheel files..."
+        
+        try {
+          $wheelFiles = Get-ChildItem dist\*.whl -ErrorAction Stop
+          Write-Host "Found $($wheelFiles.Count) wheel file(s)"
+          
+          if ($wheelFiles -and $wheelFiles.Count -gt 0) {
+            $wheelFile = $wheelFiles | Select-Object -First 1
+            Write-Host "Selected wheel: $($wheelFile.FullName)"
+            Write-Host "Installing wheel..."
+            python -m pip install --force-reinstall $wheelFile.FullName
+          } else {
+            Write-Host "[ERROR] No wheel files found in array"
+            exit 1
+          }
+        } catch {
+          Write-Host "[ERROR] Failed to find wheel files: $($_.Exception.Message)"
+          Write-Host "Directory contents:"
+          Get-ChildItem dist\ -ErrorAction SilentlyContinue
           exit 1
         }
         
