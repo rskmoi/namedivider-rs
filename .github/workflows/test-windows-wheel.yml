@@ -100,11 +100,18 @@ jobs:
 
     - name: Verify family_names.txt reconstruction
       run: |
-        $lineCount = (Get-Content "namedivider-rs\family_names.txt" | Measure-Object -Line).Lines
+        # Use the same line counting logic as debug workflow (Method 2: Split non-empty)
+        $content = Get-Content "namedivider-rs\family_names.txt" -Raw
+        $newlineChar = [char]10
+        $lines = $content -split $newlineChar | Where-Object { $_.Trim() -ne "" }
+        $lineCount = $lines.Count
+        
         if ($lineCount -eq 39999) {
           Write-Host "[OK] File reconstruction successful ($lineCount lines)"
         } else {
           Write-Host "[ERROR] File reconstruction failed: got $lineCount lines, expected 39999"
+          Write-Host "Debug info: File ends with newline: $($content.EndsWith($newlineChar))"
+          Write-Host "Debug info: File ends with CRLF: $($content.EndsWith([char]13 + [char]10))"
           exit 1
         }
       shell: powershell
