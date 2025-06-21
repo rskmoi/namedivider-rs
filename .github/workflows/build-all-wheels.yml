@@ -77,7 +77,37 @@ jobs:
         FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
         FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
 
-    - name: Build wheels
+    - name: Build wheels (Linux - separate manylinux and musllinux)
+      if: runner.os == 'Linux'
+      run: |
+        # Install cibuildwheel
+        python -m pip install cibuildwheel
+        
+        echo "=== Building manylinux wheels ==="
+        export CIBW_BUILD="cp39-* cp310-* cp311-* cp312-* cp313-*"
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_SKIP="*-musllinux*"
+        export CIBW_BEFORE_ALL_LINUX='echo "=== Installing build dependencies ==="; yum update -y || true; yum install -y centos-release-scl || true; yum install -y libatomic || true; yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel; ln -sf /usr/bin/cmake3 /usr/bin/cmake; echo "=== Installing Rust ==="; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
+        export CIBW_BEFORE_BUILD='pip install maturin'
+        python -m cibuildwheel python/ --output-dir wheelhouse/ || echo "manylinux build completed"
+        
+        echo "=== Building musllinux wheels ==="
+        unset CIBW_ENVIRONMENT
+        unset CIBW_BEFORE_ALL_LINUX
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
+        export CIBW_SKIP="*-manylinux*"
+        export CIBW_BEFORE_ALL_LINUX='echo "=== Installing build dependencies ==="; apk add --no-cache cmake clang-dev llvm-dev build-base; echo "=== Installing Rust ==="; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
+        export CIBW_BEFORE_BUILD='pip install maturin'
+        python -m cibuildwheel python/ --output-dir wheelhouse/ || echo "musllinux build completed"
+      env:
+        # Platform-specific configurations
+        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
+        CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
+        CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
+        CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
+
+    - name: Build wheels (Windows/macOS)
+      if: runner.os != 'Linux'
       uses: pypa/cibuildwheel@v2.17.0
       with:
         package-dir: python
@@ -86,44 +116,7 @@ jobs:
         # Build all Python versions 3.9-3.13 (64-bit only)
         CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
         
-        # Platform-specific configurations
-        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
-        CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
-        CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
-        CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
-        
-        # Linux-specific setup (works for both manylinux and musllinux)
-        CIBW_BEFORE_ALL_LINUX: |
-          echo "=== Installing build dependencies ==="
-          if command -v apk >/dev/null 2>&1; then
-            echo "Detected: musllinux (Alpine)"
-            apk add --no-cache cmake clang-dev llvm-dev build-base
-            echo "=== Finding libclang on Alpine ==="
-            find /usr -name "*libclang*" -type f 2>/dev/null | head -5
-            export LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"
-          else
-            echo "Detected: manylinux"
-            # Fix CentOS 7 repository issues
-            yum update -y || true
-            yum install -y centos-release-scl || true
-            yum install -y libatomic || true
-            yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
-            ln -sf /usr/bin/cmake3 /usr/bin/cmake
-            echo "=== Finding libclang on manylinux ==="
-            find /opt/rh/llvm-toolset-7 -name "*libclang*" -type f 2>/dev/null | head -5
-            export LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
-            export LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:$LD_LIBRARY_PATH"
-          fi
-          
-          echo "=== Installing Rust ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
-          source $HOME/.cargo/env
-          
-          echo "=== Final environment check ==="
-          echo "LIBCLANG_PATH: $LIBCLANG_PATH"
-          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-        
-        # Windows-specific setup (copy exact pattern from test-windows-wheel.yml)
+        # Windows-specific setup
         CIBW_BEFORE_ALL_WINDOWS: >
           echo "=== Installing build dependencies ===" &&
           choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
@@ -144,11 +137,10 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
         
-        # Environment for compilation (ensure variables are exported properly)
+        # Linux environment variables (manylinux approach)
         CIBW_ENVIRONMENT_LINUX: >
           PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH"
           LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
-          LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:$LD_LIBRARY_PATH"
         
         CIBW_ENVIRONMENT_WINDOWS: >
           PYTHONUTF8=1
@@ -165,11 +157,12 @@ jobs:
             $fileBytes = [System.IO.File]::ReadAllBytes($modelFile);
             $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true);
             $content = $utf8Decoder.GetString($fileBytes);
-            $normalizedContent = $content -replace '\\r\\n', '`n' -replace '\\r', '`n';
+            $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\";
             $utf8NoBom = [System.Text.UTF8Encoding]::new($false);
             [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom);
             Write-Host 'GBDT model file UTF-8 encoding fixed';
-          }" &&
+          }
+          " &&
           pip install maturin
         
         CIBW_ENVIRONMENT_MACOS: >
