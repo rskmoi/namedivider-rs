@@ -100,14 +100,13 @@ jobs:
 
     - name: Verify family_names.txt reconstruction
       run: |
-        # Use the same line counting logic as debug workflow (Method 2: Split non-empty)
+        # Use newline character counting (Linux wc -l equivalent) for consistent results
         $content = Get-Content "namedivider-rs\family_names.txt" -Raw
         $newlineChar = [char]10
-        $lines = $content -split $newlineChar | Where-Object { $_.Trim() -ne "" }
-        $lineCount = $lines.Count
+        $lineCount = ($content.ToCharArray() | Where-Object { $_ -eq $newlineChar }).Count
         
         if ($lineCount -eq 39999) {
-          Write-Host "[OK] File reconstruction successful ($lineCount lines)"
+          Write-Host "[OK] File reconstruction successful ($lineCount lines, wc -l equivalent)"
         } else {
           Write-Host "[ERROR] File reconstruction failed: got $lineCount lines, expected 39999"
           Write-Host "Debug info: File ends with newline: $($content.EndsWith($newlineChar))"
