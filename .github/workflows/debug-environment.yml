@@ -75,8 +75,9 @@ jobs:
         python -m cibuildwheel . --output-dir dist-test/ --platform linux || echo "Build stopped (expected - test only)"
 
   debug-macos-openmp:
-    name: Debug macOS OpenMP Environment
+    name: Debug macOS OpenMP Environment (DISABLED)
     runs-on: macos-latest
+    if: false  # Temporarily disabled
     steps:
     - uses: actions/checkout@v4
 
@@ -256,3 +257,92 @@ jobs:
         echo "4. Whether Rust can link OpenMP libraries"
         echo ""
         echo "Use this information to fix the actual build workflow."
+
+  debug-windows-family-names:
+    name: Debug Windows family_names.txt reconstruction
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Reconstruct family_names.txt (Windows)
+      run: |
+        New-Item -ItemType Directory -Path "secret" -Force
+        
+        # Function to add newline if needed (PowerShell equivalent)
+        function Add-NewlineIfNeeded($content) {
+          if ($content -and !$content.EndsWith("`n") -and !$content.EndsWith("`r`n")) {
+            return $content + "`n"
+          }
+          return $content
+        }
+        
+        # Function to remove newline if needed (PowerShell equivalent)
+        function Remove-NewlineIfNeeded($content) {
+          if ($content -and ($content.EndsWith("`n") -or $content.EndsWith("`r`n"))) {
+            return $content.TrimEnd("`r", "`n")
+          }
+          return $content
+        }
+        
+        # Simulate secrets with dummy data
+        $env:FAMILY_NAMES_PART_1 = "dummy1`ndummy2"
+        $env:FAMILY_NAMES_PART_2 = "dummy3`ndummy4"
+        $env:FAMILY_NAMES_PART_3 = "dummy5`ndummy6"
+        $env:FAMILY_NAMES_PART_4 = "dummy7`ndummy8"
+        $env:FAMILY_NAMES_PART_5 = "dummy9`ndummy10"
+        $env:FAMILY_NAMES_PART_6 = "dummy11`ndummy12"
+        $env:FAMILY_NAMES_PART_7 = "dummy13`ndummy14"
+        $env:FAMILY_NAMES_PART_8 = "dummy15"  # Last part without newline
+        
+        # Direct sequential output approach for perfect reconstruction (same as Linux)
+        $result = ""
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_1
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_2
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_3
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_4
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_5
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_6
+        $result += Add-NewlineIfNeeded $env:FAMILY_NAMES_PART_7
+        $result += Remove-NewlineIfNeeded $env:FAMILY_NAMES_PART_8
+        
+        Write-Host "=== Before TrimEnd ==="
+        Write-Host "Result length: $($result.Length)"
+        Write-Host "Result ends with newline: $($result.EndsWith(\"`n\"))"
+        Write-Host "Result ends with CRLF: $($result.EndsWith(\"`r`n\"))"
+        Write-Host "Last 5 chars as bytes: $([System.Text.Encoding]::UTF8.GetBytes($result[-5..-1]) -join ',')"
+        
+        # Write to file without BOM and ensure no extra newline at end (UTF8 encoding like Linux)
+        # Use WriteAllText with explicit content control to match Linux behavior
+        $finalResult = $result.TrimEnd("`r", "`n")  # Ensure no trailing newlines
+        [System.IO.File]::WriteAllText("secret\family_names.txt", $finalResult, [System.Text.UTF8Encoding]::new($false))
+        
+        Write-Host "=== After TrimEnd and WriteAllText ==="
+        $content = Get-Content "secret\family_names.txt" -Raw
+        Write-Host "File content length: $($content.Length)"
+        Write-Host "File ends with newline: $($content.EndsWith(\"`n\"))"
+        Write-Host "File ends with CRLF: $($content.EndsWith(\"`r`n\"))"
+        Write-Host "Last 5 chars as bytes: $([System.Text.Encoding]::UTF8.GetBytes($content[-5..-1]) -join ',')"
+        
+        # Test different line counting methods
+        Write-Host "=== Line Counting Methods ==="
+        
+        # Method 1: Standard PowerShell line count
+        $lineCount1 = (Get-Content "secret\family_names.txt" | Measure-Object -Line).Lines
+        Write-Host "Method 1 (Measure-Object): $lineCount1 lines"
+        
+        # Method 2: Split and count non-empty lines
+        $lines = $content -split \"`n\" | Where-Object { $_.Trim() -ne \"\" }
+        $lineCount2 = $lines.Count
+        Write-Host "Method 2 (Split non-empty): $lineCount2 lines"
+        
+        # Method 3: Split all lines and count
+        $allLines = $content -split \"`n\"
+        $lineCount3 = $allLines.Count
+        Write-Host "Method 3 (Split all): $lineCount3 lines"
+        Write-Host "Last line content: '$($allLines[-1])'"
+        if ($allLines.Count -gt 1) {
+          Write-Host "Second to last line content: '$($allLines[-2])'"
+        }
+        
+        Write-Host "=== Expected: 15 lines (dummy1 through dummy15) ==="
+      shell: powershell
