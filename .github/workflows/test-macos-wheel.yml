@@ -29,6 +29,27 @@ jobs:
         else
           echo "cmake already installed: $(cmake --version)"
         fi
+        
+        # Install OpenMP for LightGBM compilation
+        echo "Installing OpenMP (libomp) for LightGBM..."
+        brew install libomp
+        
+        # Get actual OpenMP installation path
+        LIBOMP_PREFIX=$(brew --prefix libomp)
+        echo "OpenMP installed at: $LIBOMP_PREFIX"
+        
+        # Set environment variables for OpenMP using actual path
+        echo "Setting OpenMP environment variables..."
+        export LIBRARY_PATH="$LIBOMP_PREFIX/lib:$LIBRARY_PATH"
+        export CPATH="$LIBOMP_PREFIX/include:$CPATH"
+        export LDFLAGS="-L$LIBOMP_PREFIX/lib $LDFLAGS"
+        export CPPFLAGS="-I$LIBOMP_PREFIX/include $CPPFLAGS"
+        
+        echo "OpenMP installation completed"
+        echo "LIBRARY_PATH=$LIBRARY_PATH"
+        echo "CPATH=$CPATH"
+        echo "LDFLAGS=$LDFLAGS"
+        echo "CPPFLAGS=$CPPFLAGS"
 
     - name: Reconstruct family_names.txt
       run: |
@@ -112,6 +133,12 @@ jobs:
         fi
       shell: bash
 
+    - name: Initialize Git submodules
+      run: |
+        echo "=== Initializing Git submodules ==="
+        git submodule update --init --recursive
+        echo "✓ Submodules initialized"
+
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
@@ -120,6 +147,47 @@ jobs:
     - name: Build wheel with maturin
       working-directory: python
       run: |
+        # Get actual OpenMP installation path
+        LIBOMP_PREFIX=$(brew --prefix libomp)
+        echo "Using OpenMP path: $LIBOMP_PREFIX"
+        
+        # Set environment variables using actual path
+        export LIBRARY_PATH="$LIBOMP_PREFIX/lib:$LIBRARY_PATH"
+        export CPATH="$LIBOMP_PREFIX/include:$CPATH"
+        export LDFLAGS="-L$LIBOMP_PREFIX/lib $LDFLAGS"
+        export CPPFLAGS="-I$LIBOMP_PREFIX/include $CPPFLAGS"
+        export RUSTFLAGS="-L $LIBOMP_PREFIX/lib"
+        
+        # Debug: Show environment variables
+        echo "=== Build Environment Debug ==="
+        echo "LIBOMP_PREFIX: $LIBOMP_PREFIX"
+        echo "LIBRARY_PATH: $LIBRARY_PATH"
+        echo "CPATH: $CPATH"
+        echo "LDFLAGS: $LDFLAGS"
+        echo "CPPFLAGS: $CPPFLAGS"
+        echo "RUSTFLAGS: $RUSTFLAGS"
+        echo "Architecture: $(uname -m)"
+        
+        # Check if OpenMP libraries are available at actual path
+        echo "=== OpenMP Library Check ==="
+        ls -la "$LIBOMP_PREFIX/include/omp.h" || echo "omp.h not found at $LIBOMP_PREFIX/include/"
+        ls -la "$LIBOMP_PREFIX/lib/libomp."* || echo "libomp not found at $LIBOMP_PREFIX/lib/"
+        
+        # Create cargo config with actual path
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+        [target.aarch64-apple-darwin]
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
+        
+        [target.x86_64-apple-darwin]
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
+        EOF
+        
+        echo "=== Cargo Config ==="
+        cat .cargo/config.toml
+        
+        # Build wheel
+        echo "=== Starting maturin build ==="
         python -m maturin build --release --out ../dist/
 
     - name: Upload wheel

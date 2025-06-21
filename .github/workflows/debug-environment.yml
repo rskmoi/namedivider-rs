@@ -5,8 +5,9 @@ on:
 
 jobs:
   debug-libclang:
-    name: Debug LIBCLANG_PATH Environment
+    name: Debug LIBCLANG_PATH Environment (DISABLED)
     runs-on: ubuntu-latest
+    if: false  # Temporarily disabled
     steps:
     - uses: actions/checkout@v4
 
@@ -72,3 +73,186 @@ jobs:
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
         export CIBW_SKIP="*-manylinux*"
         python -m cibuildwheel . --output-dir dist-test/ --platform linux || echo "Build stopped (expected - test only)"
+
+  debug-macos-openmp:
+    name: Debug macOS OpenMP Environment
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: 1.75.0
+
+    - name: Install OpenMP and debug environment
+      run: |
+        echo "=== System Info ==="
+        uname -a
+        echo "Architecture: $(uname -m)"
+        
+        echo "=== Installing OpenMP ==="
+        brew install libomp
+        
+        echo "=== Detailed OpenMP Installation Check ==="
+        echo "Architecture: $(uname -m)"
+        
+        # Check what brew actually installed
+        echo "=== Brew info for libomp ==="
+        brew --prefix libomp || echo "libomp prefix not found"
+        brew list libomp | head -10 || echo "libomp files not listed"
+        
+        # Check all possible locations
+        echo "=== Searching for omp.h in all locations ==="
+        find /opt/homebrew -name "omp.h" 2>/dev/null || echo "Not found in /opt/homebrew"
+        find /usr/local -name "omp.h" 2>/dev/null || echo "Not found in /usr/local"
+        find /Library -name "omp.h" 2>/dev/null || echo "Not found in /Library"
+        
+        echo "=== Searching for libomp libraries ==="
+        find /opt/homebrew -name "*libomp*" 2>/dev/null | head -5 || echo "No libomp in /opt/homebrew"
+        find /usr/local -name "*libomp*" 2>/dev/null | head -5 || echo "No libomp in /usr/local"
+        
+        # Check what clang can see
+        echo "=== Clang include search paths ==="
+        echo | clang++ -E -Wp,-v - 2>&1 | grep "^ " || echo "Could not get clang search paths"
+
+    - name: Test environment variables and linking
+      run: |
+        echo "=== Testing Environment Variables ==="
+        
+        # Set environment variables
+        if [[ "$(uname -m)" == "arm64" ]]; then
+          export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
+          export CPATH="/opt/homebrew/include:$CPATH"
+          export LDFLAGS="-L/opt/homebrew/lib $LDFLAGS"
+          export CPPFLAGS="-I/opt/homebrew/include $CPPFLAGS"
+          export RUSTFLAGS="-L /opt/homebrew/lib"
+        else
+          export LIBRARY_PATH="/usr/local/lib:$LIBRARY_PATH"
+          export CPATH="/usr/local/include:$CPATH"
+          export LDFLAGS="-L/usr/local/lib $LDFLAGS"
+          export CPPFLAGS="-I/usr/local/include $CPPFLAGS"
+          export RUSTFLAGS="-L /usr/local/lib"
+        fi
+        
+        echo "LIBRARY_PATH: $LIBRARY_PATH"
+        echo "CPATH: $CPATH"
+        echo "LDFLAGS: $LDFLAGS"
+        echo "CPPFLAGS: $CPPFLAGS"
+        echo "RUSTFLAGS: $RUSTFLAGS"
+
+    - name: Test C++ OpenMP compilation
+      run: |
+        echo "=== Testing C++ OpenMP Compilation ==="
+        
+        # Create simple OpenMP test
+        cat > test_openmp.cpp << 'EOF'
+        #include <iostream>
+        #include <omp.h>
+        
+        int main() {
+            std::cout << "OpenMP version: " << _OPENMP << std::endl;
+            std::cout << "Max threads: " << omp_get_max_threads() << std::endl;
+            return 0;
+        }
+        EOF
+        
+        # Find actual OpenMP installation path
+        echo "=== Finding actual OpenMP paths ==="
+        LIBOMP_PREFIX=$(brew --prefix libomp 2>/dev/null || echo "")
+        if [[ -n "$LIBOMP_PREFIX" && -f "$LIBOMP_PREFIX/include/omp.h" ]]; then
+          echo "✓ Found OpenMP at brew prefix: $LIBOMP_PREFIX"
+          OPENMP_INCLUDE="$LIBOMP_PREFIX/include"
+          OPENMP_LIB="$LIBOMP_PREFIX/lib"
+        else
+          echo "❌ OpenMP not found at brew prefix, searching manually..."
+          OMP_HEADER=$(find /opt/homebrew /usr/local -name "omp.h" 2>/dev/null | head -1)
+          if [[ -n "$OMP_HEADER" ]]; then
+            OPENMP_INCLUDE=$(dirname "$OMP_HEADER")
+            OPENMP_LIB=$(dirname "$OPENMP_INCLUDE")/lib
+            echo "✓ Found omp.h at: $OMP_HEADER"
+            echo "✓ Using include: $OPENMP_INCLUDE"
+            echo "✓ Using lib: $OPENMP_LIB"
+          else
+            echo "❌ Could not find omp.h anywhere"
+            exit 1
+          fi
+        fi
+        
+        # Set compiler flags with actual paths (macOS clang needs special OpenMP flags)
+        OPENMP_FLAGS="-I$OPENMP_INCLUDE -L$OPENMP_LIB -lomp -Xpreprocessor -fopenmp"
+        echo "Compiling with: clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp"
+        clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp
+        
+        echo "Running OpenMP test:"
+        ./test_openmp
+
+    - name: Test Rust linking simulation
+      run: |
+        echo "=== Testing Rust Linking Simulation ==="
+        
+        # Initialize Git submodules for lightgbm dependency
+        echo "Initializing Git submodules..."
+        git submodule update --init --recursive
+        
+        # Create minimal Rust project
+        mkdir -p test-rust-openmp
+        cd test-rust-openmp
+        cargo init --lib
+        
+        # Get actual OpenMP path for Rust test
+        LIBOMP_PREFIX=$(brew --prefix libomp)
+        echo "Using OpenMP path for Rust: $LIBOMP_PREFIX"
+        
+        # Create cargo config with actual path
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+        [target.aarch64-apple-darwin]
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
+        
+        [target.x86_64-apple-darwin]
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
+        EOF
+        
+        echo "=== Cargo Config ==="
+        cat .cargo/config.toml
+        
+        # Test if cargo can find OpenMP
+        echo "=== Testing Cargo Build with OpenMP linking ==="
+        
+        # Add build script that tries to link OpenMP
+        cat > build.rs << 'EOF'
+        fn main() {
+            println!("cargo:rustc-link-lib=omp");
+            println!("cargo:rerun-if-changed=build.rs");
+        }
+        EOF
+        
+        # Simple lib that would use OpenMP
+        cat > src/lib.rs << 'EOF'
+        pub fn test_function() {
+            println!("Test function");
+        }
+        EOF
+        
+        echo "Attempting cargo check..."
+        cargo check || echo "❌ Cargo check failed - OpenMP linking issue"
+        
+        cd ..
+
+    - name: Summary
+      run: |
+        echo "=== Environment Debug Summary ==="
+        echo "Architecture: $(uname -m)"
+        echo "This debug run helps identify:"
+        echo "1. Whether OpenMP is properly installed"
+        echo "2. Whether environment variables are set correctly"
+        echo "3. Whether C++ can compile with OpenMP"
+        echo "4. Whether Rust can link OpenMP libraries"
+        echo ""
+        echo "Use this information to fix the actual build workflow."
