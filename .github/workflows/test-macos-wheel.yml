@@ -29,6 +29,29 @@ jobs:
         else
           echo "cmake already installed: $(cmake --version)"
         fi
+        
+        # Install OpenMP for LightGBM compilation
+        echo "Installing OpenMP (libomp) for LightGBM..."
+        brew install libomp
+        
+        # Set environment variables for OpenMP
+        echo "Setting OpenMP environment variables..."
+        export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
+        export CPATH="/opt/homebrew/include:$CPATH"
+        export LDFLAGS="-L/opt/homebrew/lib $LDFLAGS"
+        export CPPFLAGS="-I/opt/homebrew/include $CPPFLAGS"
+        
+        # Also set for Intel Macs (x86_64)
+        if [[ "$(uname -m)" == "x86_64" ]]; then
+          export LIBRARY_PATH="/usr/local/lib:$LIBRARY_PATH"
+          export CPATH="/usr/local/include:$CPATH"
+          export LDFLAGS="-L/usr/local/lib $LDFLAGS"
+          export CPPFLAGS="-I/usr/local/include $CPPFLAGS"
+        fi
+        
+        echo "OpenMP installation completed"
+        echo "LIBRARY_PATH=$LIBRARY_PATH"
+        echo "CPATH=$CPATH"
 
     - name: Reconstruct family_names.txt
       run: |
@@ -119,7 +142,30 @@ jobs:
 
     - name: Build wheel with maturin
       working-directory: python
+      env:
+        LIBRARY_PATH: "/opt/homebrew/lib:/usr/local/lib"
+        CPATH: "/opt/homebrew/include:/usr/local/include"
+        LDFLAGS: "-L/opt/homebrew/lib -L/usr/local/lib"
+        CPPFLAGS: "-I/opt/homebrew/include -I/usr/local/include"
       run: |
+        # Debug: Show environment variables
+        echo "=== Build Environment Debug ==="
+        echo "LIBRARY_PATH: $LIBRARY_PATH"
+        echo "CPATH: $CPATH"
+        echo "LDFLAGS: $LDFLAGS"
+        echo "CPPFLAGS: $CPPFLAGS"
+        
+        # Check if OpenMP is available
+        echo "=== OpenMP Check ==="
+        if [[ "$(uname -m)" == "arm64" ]]; then
+          echo "ARM64 Mac detected, checking /opt/homebrew/include/omp.h"
+          ls -la /opt/homebrew/include/omp.h || echo "omp.h not found in /opt/homebrew/include/"
+        else
+          echo "Intel Mac detected, checking /usr/local/include/omp.h"
+          ls -la /usr/local/include/omp.h || echo "omp.h not found in /usr/local/include/"
+        fi
+        
+        # Build wheel
         python -m maturin build --release --out ../dist/
 
     - name: Upload wheel
