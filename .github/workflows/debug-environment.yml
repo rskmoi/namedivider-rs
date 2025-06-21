@@ -185,7 +185,7 @@ jobs:
         fi
         
         # Set compiler flags with actual paths
-        OPENMP_FLAGS="-I$OPENMP_INCLUDE -L$OPENMP_LIB -lomp"
+        OPENMP_FLAGS="-I$OPENMP_INCLUDE -L$OPENMP_LIB -lomp -fopenmp"
         echo "Compiling with: clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp"
         clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp
         
@@ -201,19 +201,19 @@ jobs:
         cd test-rust-openmp
         cargo init --lib
         
-        # Create cargo config
+        # Get actual OpenMP path for Rust test
+        LIBOMP_PREFIX=$(brew --prefix libomp)
+        echo "Using OpenMP path for Rust: $LIBOMP_PREFIX"
+        
+        # Create cargo config with actual path
         mkdir -p .cargo
-        if [[ "$(uname -m)" == "arm64" ]]; then
-          cat > .cargo/config.toml << 'EOF'
+        cat > .cargo/config.toml << EOF
         [target.aarch64-apple-darwin]
-        rustflags = ["-L", "/opt/homebrew/lib"]
-        EOF
-        else
-          cat > .cargo/config.toml << 'EOF'
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
+        
         [target.x86_64-apple-darwin]
-        rustflags = ["-L", "/usr/local/lib"]
+        rustflags = ["-L", "$LIBOMP_PREFIX/lib"]
         EOF
-        fi
         
         echo "=== Cargo Config ==="
         cat .cargo/config.toml
