@@ -147,6 +147,11 @@ jobs:
         CPATH: "/opt/homebrew/include:/usr/local/include"
         LDFLAGS: "-L/opt/homebrew/lib -L/usr/local/lib"
         CPPFLAGS: "-I/opt/homebrew/include -I/usr/local/include"
+        # Ensure Rust can find OpenMP for linking
+        RUSTFLAGS: "-L /opt/homebrew/lib -L /usr/local/lib"
+        # Alternative approach: set cargo config
+        CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS: "-L /opt/homebrew/lib"
+        CARGO_TARGET_X86_64_APPLE_DARWIN_RUSTFLAGS: "-L /usr/local/lib"
       run: |
         # Debug: Show environment variables
         echo "=== Build Environment Debug ==="
@@ -154,18 +159,40 @@ jobs:
         echo "CPATH: $CPATH"
         echo "LDFLAGS: $LDFLAGS"
         echo "CPPFLAGS: $CPPFLAGS"
+        echo "RUSTFLAGS: $RUSTFLAGS"
+        echo "Architecture: $(uname -m)"
         
-        # Check if OpenMP is available
-        echo "=== OpenMP Check ==="
+        # Check if OpenMP libraries are available
+        echo "=== OpenMP Library Check ==="
         if [[ "$(uname -m)" == "arm64" ]]; then
-          echo "ARM64 Mac detected, checking /opt/homebrew/include/omp.h"
+          echo "ARM64 Mac detected, checking Homebrew OpenMP:"
           ls -la /opt/homebrew/include/omp.h || echo "omp.h not found in /opt/homebrew/include/"
+          ls -la /opt/homebrew/lib/libomp.* || echo "libomp not found in /opt/homebrew/lib/"
+          echo "Setting ARM64 specific flags..."
+          export RUSTFLAGS="-L /opt/homebrew/lib"
         else
-          echo "Intel Mac detected, checking /usr/local/include/omp.h"
+          echo "Intel Mac detected, checking OpenMP:"
           ls -la /usr/local/include/omp.h || echo "omp.h not found in /usr/local/include/"
+          ls -la /usr/local/lib/libomp.* || echo "libomp not found in /usr/local/lib/"
+          echo "Setting x86_64 specific flags..."
+          export RUSTFLAGS="-L /usr/local/lib"
         fi
         
+        # Create cargo config to ensure proper linking
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+        [target.aarch64-apple-darwin]
+        rustflags = ["-L", "/opt/homebrew/lib"]
+        
+        [target.x86_64-apple-darwin]
+        rustflags = ["-L", "/usr/local/lib"]
+        EOF
+        
+        echo "=== Cargo Config ==="
+        cat .cargo/config.toml
+        
         # Build wheel
+        echo "=== Starting maturin build ==="
         python -m maturin build --release --out ../dist/
 
     - name: Upload wheel
