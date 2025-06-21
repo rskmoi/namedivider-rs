@@ -184,8 +184,8 @@ jobs:
           fi
         fi
         
-        # Set compiler flags with actual paths
-        OPENMP_FLAGS="-I$OPENMP_INCLUDE -L$OPENMP_LIB -lomp -fopenmp"
+        # Set compiler flags with actual paths (macOS clang needs special OpenMP flags)
+        OPENMP_FLAGS="-I$OPENMP_INCLUDE -L$OPENMP_LIB -lomp -Xpreprocessor -fopenmp"
         echo "Compiling with: clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp"
         clang++ $OPENMP_FLAGS -o test_openmp test_openmp.cpp
         
