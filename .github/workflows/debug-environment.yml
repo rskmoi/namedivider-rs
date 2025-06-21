@@ -307,20 +307,22 @@ jobs:
         
         Write-Host "=== Before TrimEnd ==="
         Write-Host "Result length: $($result.Length)"
-        Write-Host "Result ends with newline: $($result.EndsWith(\"`n\"))"
-        Write-Host "Result ends with CRLF: $($result.EndsWith(\"`r`n\"))"
+        $newlineChar = [char]10
+        $crlfChar = [char]13 + [char]10
+        Write-Host "Result ends with newline: $($result.EndsWith($newlineChar))"
+        Write-Host "Result ends with CRLF: $($result.EndsWith($crlfChar))"
         Write-Host "Last 5 chars as bytes: $([System.Text.Encoding]::UTF8.GetBytes($result[-5..-1]) -join ',')"
         
         # Write to file without BOM and ensure no extra newline at end (UTF8 encoding like Linux)
         # Use WriteAllText with explicit content control to match Linux behavior
-        $finalResult = $result.TrimEnd("`r", "`n")  # Ensure no trailing newlines
+        $finalResult = $result.TrimEnd([char]13, [char]10)  # Ensure no trailing newlines
         [System.IO.File]::WriteAllText("secret\family_names.txt", $finalResult, [System.Text.UTF8Encoding]::new($false))
         
         Write-Host "=== After TrimEnd and WriteAllText ==="
         $content = Get-Content "secret\family_names.txt" -Raw
         Write-Host "File content length: $($content.Length)"
-        Write-Host "File ends with newline: $($content.EndsWith(\"`n\"))"
-        Write-Host "File ends with CRLF: $($content.EndsWith(\"`r`n\"))"
+        Write-Host "File ends with newline: $($content.EndsWith($newlineChar))"
+        Write-Host "File ends with CRLF: $($content.EndsWith($crlfChar))"
         Write-Host "Last 5 chars as bytes: $([System.Text.Encoding]::UTF8.GetBytes($content[-5..-1]) -join ',')"
         
         # Test different line counting methods
@@ -331,12 +333,12 @@ jobs:
         Write-Host "Method 1 (Measure-Object): $lineCount1 lines"
         
         # Method 2: Split and count non-empty lines
-        $lines = $content -split \"`n\" | Where-Object { $_.Trim() -ne \"\" }
+        $lines = $content -split $newlineChar | Where-Object { $_.Trim() -ne "" }
         $lineCount2 = $lines.Count
         Write-Host "Method 2 (Split non-empty): $lineCount2 lines"
         
         # Method 3: Split all lines and count
-        $allLines = $content -split \"`n\"
+        $allLines = $content -split $newlineChar
         $lineCount3 = $allLines.Count
         Write-Host "Method 3 (Split all): $lineCount3 lines"
         Write-Host "Last line content: '$($allLines[-1])'"
