@@ -129,7 +129,57 @@ jobs:
 
     - name: Build wheel with maturin
       working-directory: python
+      env:
+        # Rustコンパイラとmaturinでのエンコーディング設定
+        PYTHONUTF8: 1
+        PYTHONIOENCODING: utf-8
+        RUST_LOG: info
       run: |
+        # PowerShell全体のエンコーディングをUTF-8に設定
+        $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+        
+        Write-Host "=== Ensuring UTF-8 encoding for Rust embedded assets ==="
+        
+        # gbdt_model_v1.txtファイルがUTF-8であることを確認・強制
+        $modelFile = "../namedivider-rs/src/assets/gbdt_model_v1.txt"
+        Write-Host "Model file path: $modelFile"
+        Write-Host "Model file exists: $(Test-Path $modelFile)"
+        
+        if (Test-Path $modelFile) {
+          # ファイル情報を確認
+          $fileInfo = Get-Item $modelFile
+          Write-Host "Model file size: $($fileInfo.Length) bytes"
+          Write-Host "Model file last write time: $($fileInfo.LastWriteTime)"
+          
+          # UTF-8でファイル内容を読み込み
+          $content = Get-Content $modelFile -Raw -Encoding UTF8
+          $firstLine = $content.Split([Environment]::NewLine)[0]
+          Write-Host "Model file first line: '$firstLine'"
+          
+          # LightGBM形式であることを確認
+          if ($firstLine -eq "tree") {
+            Write-Host "✓ Model file format looks correct (starts with 'tree')"
+          } else {
+            Write-Host "❌ Model file format may be corrupted"
+            Write-Host "Expected: 'tree', Got: '$firstLine'"
+          }
+          
+          # UTF-8 without BOMで確実に再保存
+          $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText($modelFile, $content, $utf8NoBom)
+          Write-Host "✓ Model file re-saved as UTF-8 without BOM"
+          
+          # 保存後のファイルサイズ確認
+          $newSize = (Get-Item $modelFile).Length
+          Write-Host "Model file size after UTF-8 conversion: $newSize bytes"
+        } else {
+          Write-Host "❌ Model file not found: $modelFile"
+          exit 1
+        }
+        
+        Write-Host "=== Building wheel with maturin ==="
         python -m maturin build --release --out ../dist/
 
     - name: Upload wheel
