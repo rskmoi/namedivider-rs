@@ -165,15 +165,19 @@ jobs:
           powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
           pip install maturin
         
+        # macOS common environment
         CIBW_ENVIRONMENT_MACOS: >
           LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
           CPATH="$(brew --prefix libomp)/include:$CPATH"
           LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
           CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
           RUSTFLAGS="-L $(brew --prefix libomp)/lib"
-          MACOSX_DEPLOYMENT_TARGET="13.0"
           PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
           PATH="$HOME/.cargo/bin:$PATH"
+        
+        # Architecture-specific deployment targets
+        CIBW_ENVIRONMENT_MACOS_X86_64: MACOSX_DEPLOYMENT_TARGET="13.0"
+        CIBW_ENVIRONMENT_MACOS_ARM64: MACOSX_DEPLOYMENT_TARGET="14.0"
         
         # Test the wheels (bash approach for Windows UTF-8 handling)
         CIBW_TEST_COMMAND_WINDOWS: >
