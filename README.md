@@ -54,7 +54,11 @@ pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/na
 
 ### 対応環境
 - **Python**: 3.9, 3.10, 3.11, 3.12, 3.13
-- **プラットフォーム**: Linux (manylinux/musllinux), Windows, macOS
-- **アーキテクチャ**: x86_64 (64-bit)
+- **プラットフォーム**: 
+  - Linux: manylinux2014, musllinux_1_2 (x86_64)
+  - Windows: win_amd64
+  - macOS Intel: x86_64 (macOS 13.0以降)
+  - macOS Apple Silicon: arm64 (macOS 14.0以降)
+- **総計**: 30種類のホイール環境をサポート
 
 詳細な技術情報については [ワークフローのドキュメント](.github/workflows/README.md) を参照してください。

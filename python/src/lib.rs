@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::types::{IntoPyDict, PyDict};
+use pyo3::types::PyDict;
 
 use namedivider_rs::divider::basic_name_divider::get_basic_name_divider;
 use namedivider_rs::divider::basic_name_divider::BasicNameDivider;
@@ -49,15 +49,13 @@ impl PyDividedName {
     }
 
     fn to_dict(&self, py: Python<'_>) -> PyResult<Py<PyDict>> {
-        let key_vals: Vec<(&str, PyObject)> = vec![
-            ("family", self.family.to_object(py)),
-            ("given", self.given.to_object(py)),
-            ("separator", self.separator.to_object(py)),
-            ("algorithm", self.algorithm.to_object(py)),
-            ("score", self.score.to_object(py)),
-        ];
-        let dict = key_vals.into_py_dict(py);
-        Ok(dict.into())
+        let dict = PyDict::new_bound(py);
+        dict.set_item("family", &self.family)?;
+        dict.set_item("given", &self.given)?;
+        dict.set_item("separator", &self.separator)?;
+        dict.set_item("algorithm", &self.algorithm)?;
+        dict.set_item("score", self.score)?;
+        Ok(dict.unbind())
     }
 }
 
@@ -69,11 +67,7 @@ struct PyBasicNameDivider {
 #[pymethods]
 impl PyBasicNameDivider {
     #[new]
-    #[args(
-        separator = "\" \"",
-        normalize_name = true,
-        only_order_score_when_4 = false
-    )]
+    #[pyo3(signature = (separator = " ", normalize_name = true, only_order_score_when_4 = false))]
     fn new(separator: &str, normalize_name: bool, only_order_score_when_4: bool) -> Self {
         let divider = get_basic_name_divider(
             separator.to_string(),
@@ -126,7 +120,7 @@ struct PyGBDTNameDivider {
 #[pymethods]
 impl PyGBDTNameDivider {
     #[new]
-    #[args(separator = "\" \"", normalize_name = true)]
+    #[pyo3(signature = (separator = " ", normalize_name = true))]
     fn new(separator: &str, normalize_name: bool) -> Self {
         let divider =
             get_gbdt_name_divider(separator.to_string(), normalize_name, "gbdt".to_string());
@@ -168,7 +162,7 @@ impl PyGBDTNameDivider {
 }
 
 #[pymodule]
-fn namedivider_rust(_py: Python, m: &PyModule) -> PyResult<()> {
+fn namedivider_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyDividedName>()?;
     m.add_class::<PyBasicNameDivider>()?;
     m.add_class::<PyGBDTNameDivider>()?;

@@ -1,4 +1,4 @@
-name: Build All Wheels (20 Environments)
+name: Build All Wheels (30 Environments)
 
 on:
   workflow_dispatch:
@@ -10,7 +10,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          # Linux builds
+          - os: ubuntu-latest
+            platform: linux
+          # Windows builds  
+          - os: windows-latest
+            platform: windows
+          # macOS Intel (x86_64) - requires macOS 13.0+ for OpenMP
+          - os: macos-13
+            platform: macos
+            macos_target: "13.0"
+          # macOS Apple Silicon (arm64) - requires macOS 14.0+ for OpenMP
+          - os: macos-latest
+            platform: macos
+            macos_target: "14.0"
 
     steps:
     - uses: actions/checkout@v4
@@ -120,13 +134,16 @@ jobs:
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v2.17.0
+      uses: pypa/cibuildwheel@v2.20.0
       with:
         package-dir: python
         output-dir: wheelhouse
       env:
         # Build all Python versions 3.9-3.13 (64-bit only)
         CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+        
+        # macOS deployment target based on matrix (Intel: 13.0, Apple Silicon: 14.0)
+        CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
         
         # Windows-specific setup
         CIBW_BEFORE_ALL_WINDOWS: >
@@ -160,12 +177,25 @@ jobs:
           powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
           pip install maturin
         
-        CIBW_ENVIRONMENT_MACOS: >
+        
+        # macOS Intel (x86_64) environment
+        CIBW_ENVIRONMENT_MACOS_X86_64: >
           LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
           CPATH="$(brew --prefix libomp)/include:$CPATH"
           LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
           CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
           RUSTFLAGS="-L $(brew --prefix libomp)/lib"
+          MACOSX_DEPLOYMENT_TARGET="13.0"
+          PATH="$HOME/.cargo/bin:$PATH"
+        
+        # macOS Apple Silicon (arm64) environment
+        CIBW_ENVIRONMENT_MACOS_ARM64: >
+          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
+          CPATH="$(brew --prefix libomp)/include:$CPATH"
+          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
+          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
+          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
+          MACOSX_DEPLOYMENT_TARGET="14.0"
           PATH="$HOME/.cargo/bin:$PATH"
         
         # Test the wheels (bash approach for Windows UTF-8 handling)
@@ -207,7 +237,7 @@ jobs:
         # Count total wheels
         total_wheels=$(find dist/ -name "*.whl" -type f | wc -l)
         echo "Total wheels built: $total_wheels"
-        echo "Expected: 20 wheels (5 Python versions × 4 platforms)"
+        echo "Expected: 30 wheels (5 Python versions × 6 platforms: Linux×2 + Windows + macOS×2)"
         
         # List wheels by platform
         echo ""
@@ -241,10 +271,10 @@ jobs:
         # Summary
         echo ""
         echo "=== Summary ==="
-        if [ "$total_wheels" -eq 20 ]; then
-          echo "✅ SUCCESS: All 20 wheels built successfully!"
+        if [ "$total_wheels" -eq 30 ]; then
+          echo "✅ SUCCESS: All 30 wheels built successfully!"
         else
-          echo "❌ WARNING: Expected 20 wheels, got $total_wheels"
+          echo "❌ WARNING: Expected 30 wheels, got $total_wheels"
         fi
 
     - name: Upload combined wheels

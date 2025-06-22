@@ -33,13 +33,14 @@
 
 ### 3. `build-all-wheels.yml` - 本番用統合ビルド
 **実行時間**: 60-90分  
-**目的**: 全20環境でのPythonホイール作成
+**目的**: 全30環境でのPythonホイール作成
 
 **対象環境**:
 - **Linux**: manylinux + musllinux（各5ホイール）
 - **Windows**: Python 3.9-3.13（5ホイール）  
-- **macOS**: Python 3.9-3.13（5ホイール）
-- **合計**: 20ホイール
+- **macOS Intel**: Python 3.9-3.13（5ホイール）
+- **macOS Apple Silicon**: Python 3.9-3.13（5ホイール）
+- **合計**: 30ホイール
 
 **使用タイミング**:
 - PR マージ前の最終検証
@@ -74,14 +75,18 @@
 
 ### macOS環境の特殊対応
 - **OpenMP**: LightGBM用にlibomp自動インストール
-- **環境変数**: LIBRARY_PATH, CPATH, LDFLAGS設定
+- **明示的リンク**: build.rsによるプラットフォーム別OpenMPリンク設定
+- **Deployment Target**: Intel Mac（13.0以降）、Apple Silicon（14.0以降）
+- **アーキテクチャ別パス**: 
+  - Intel Mac: `/usr/local/opt/libomp/lib`
+  - Apple Silicon: `/opt/homebrew/opt/libomp/lib`
 
 ## 🔧 保守・更新
 
 ### 定期的な見直し項目
 - Rustバージョン（現在: 1.75.0）
 - Pythonバージョン範囲（現在: 3.9-3.13）
-- cibuildwheelバージョン（現在: v2.17.0）
+- cibuildwheelバージョン（現在: v2.20.0）
 - コンテナイメージ（manylinux2014, musllinux_1_2）
 
 ### 新しいプラットフォーム追加時
