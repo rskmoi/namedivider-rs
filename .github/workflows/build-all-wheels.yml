@@ -120,7 +120,7 @@ jobs:
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v3.0.0
+      uses: pypa/cibuildwheel@v2.20.0
       with:
         package-dir: python
         output-dir: wheelhouse
@@ -166,6 +166,7 @@ jobs:
           LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
           CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
           RUSTFLAGS="-L $(brew --prefix libomp)/lib"
+          MACOSX_DEPLOYMENT_TARGET="10.9"
           PATH="$HOME/.cargo/bin:$PATH"
         
         # Test the wheels (bash approach for Windows UTF-8 handling)
