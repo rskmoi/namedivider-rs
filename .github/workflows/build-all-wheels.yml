@@ -151,7 +151,9 @@ jobs:
           echo "OpenMP installed at: $LIBOMP_PREFIX" &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
-          source $HOME/.cargo/env
+          source $HOME/.cargo/env &&
+          echo "=== Setting PyO3 compatibility flag ===" &&
+          export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
         
         CIBW_ENVIRONMENT_WINDOWS: >
           PYTHONUTF8=1
@@ -164,6 +166,9 @@ jobs:
         CIBW_BEFORE_BUILD_WINDOWS: >
           powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
           pip install maturin
+        
+        CIBW_BEFORE_BUILD_MACOS: >
+          export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
         
         # macOS Intel (x86_64) environment
         CIBW_ENVIRONMENT_MACOS_X86_64: >
