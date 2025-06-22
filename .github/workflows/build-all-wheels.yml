@@ -151,6 +151,9 @@ jobs:
         # Build Python 3.13 only for testing (64-bit only)
         CIBW_BUILD: "cp313-*"
         
+        # macOS deployment target settings
+        CIBW_ENVIRONMENT_MACOS: "MACOSX_DEPLOYMENT_TARGET=13.0"
+        
         # Windows-specific setup
         CIBW_BEFORE_ALL_WINDOWS: >
           echo "=== Installing build dependencies ===" &&
