@@ -47,3 +47,14 @@ pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/na
 ```
 
 ライセンスはpython実装と同じです。他のプラットフォームやPythonバージョン用のwheelは順次提供予定です。
+
+## CI/CD
+
+このプロジェクトでは、GitHub Actionsを使用して全プラットフォーム対応のPythonホイールを自動ビルドしています。
+
+### 対応環境
+- **Python**: 3.9, 3.10, 3.11, 3.12, 3.13
+- **プラットフォーム**: Linux (manylinux/musllinux), Windows, macOS
+- **アーキテクチャ**: x86_64 (64-bit)
+
+詳細な技術情報については [ワークフローのドキュメント](.github/workflows/README.md) を参照してください。
