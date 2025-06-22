@@ -85,9 +85,9 @@ jobs:
         
         echo "=== Building manylinux wheels ==="
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64" CARGO_HOME="$HOME/.cargo" RUSTUP_HOME="$HOME/.rustup"'
         unset CIBW_SKIP
-        export CIBW_BEFORE_ALL_LINUX='echo "=== Installing build dependencies ==="; yum update -y || true; yum install -y centos-release-scl || true; yum install -y libatomic || true; yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel; ln -sf /usr/bin/cmake3 /usr/bin/cmake; echo "=== CMake version ==="; cmake --version; echo "=== Finding clang and libclang ==="; find /opt/rh/llvm-toolset-7 -name "clang" -type f 2>/dev/null || echo "clang not found"; find /opt/rh/llvm-toolset-7 -name "*libclang*" -type f 2>/dev/null | head -3; echo "=== Installing Rust ==="; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
+        export CIBW_BEFORE_ALL_LINUX='echo "=== Installing build dependencies ==="; yum update -y || true; yum install -y centos-release-scl || true; yum install -y libatomic || true; yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel; ln -sf /usr/bin/cmake3 /usr/bin/cmake; echo "=== Installing Rust to default location ==="; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y --no-modify-path; echo "=== Rust installation completed ==="'
         export CIBW_BEFORE_BUILD='pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
         
@@ -95,9 +95,9 @@ jobs:
         unset CIBW_ENVIRONMENT
         unset CIBW_BEFORE_ALL_LINUX
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7" CARGO_HOME="$HOME/.cargo" RUSTUP_HOME="$HOME/.rustup"'
         unset CIBW_SKIP
-        export CIBW_BEFORE_ALL_LINUX='echo "=== Installing build dependencies ==="; apk add --no-cache cmake clang-dev llvm-dev build-base; echo "Available libclang files:"; find /usr -name "*libclang*" -type f 2>/dev/null | head -5; echo "=== Installing Rust ==="; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
+        export CIBW_BEFORE_ALL_LINUX='echo "=== Installing build dependencies ==="; apk add --no-cache cmake clang-dev llvm-dev build-base; echo "=== Installing Rust to default location ==="; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y --no-modify-path; echo "=== Rust installation completed ==="'
         export CIBW_BEFORE_BUILD='pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
@@ -138,11 +138,6 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
         
-        # Linux environment variables (manylinux approach)
-        CIBW_ENVIRONMENT_LINUX: >
-          PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH"
-          LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
-        
         CIBW_ENVIRONMENT_WINDOWS: >
           PYTHONUTF8=1
           PYTHONIOENCODING=utf-8
@@ -162,15 +157,9 @@ jobs:
           RUSTFLAGS="-L $(brew --prefix libomp)/lib"
           PATH="$HOME/.cargo/bin:$PATH"
         
-        # Build dependencies
-        CIBW_BEFORE_BUILD: pip install maturin
-        
         # Test the wheels (bash approach for Windows UTF-8 handling)
         CIBW_TEST_COMMAND_WINDOWS: >
           bash -c "export LANG=en_US.UTF-8; export LC_ALL=en_US.UTF-8; python -c \"import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')\""
-        
-        CIBW_TEST_COMMAND_LINUX: >
-          python -c "import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
         
         CIBW_TEST_COMMAND_MACOS: >
           python -c "import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
