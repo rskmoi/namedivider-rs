@@ -138,18 +138,18 @@ jobs:
         
         # Test functionality
         python -c "
-        import namedivider_rust
+        import namedivider_core
         print('✓ Module imported successfully')
         
         # Test Basic divider
-        basic = namedivider_rust.BasicNameDivider()
+        basic = namedivider_core.BasicNameDivider()
         result1 = basic.divide_name('田中太郎')
         print(f'Basic result: {result1}')
         assert str(result1) == '田中 太郎'
         print('✓ BasicNameDivider test passed')
         
         # Test GBDT divider  
-        gbdt = namedivider_rust.GBDTNameDivider()
+        gbdt = namedivider_core.GBDTNameDivider()
         result2 = gbdt.divide_name('佐藤花子')
         print(f'GBDT result: {result2}')
         assert str(result2) == '佐藤 花子'
