@@ -86,14 +86,14 @@ jobs:
         echo "=== Building manylinux wheels ==="
         # export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
         export CIBW_BUILD="cp313-manylinux_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64" PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
         export CIBW_SKIP="*-musllinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
         
         # Build musllinux separately
         echo "=== Building musllinux wheels ==="
         unset CIBW_ENVIRONMENT
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7" PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
         # export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64"
         export CIBW_BUILD="cp313-musllinux_x86_64"
         export CIBW_SKIP="*-manylinux*"
@@ -151,15 +151,12 @@ jobs:
           echo "OpenMP installed at: $LIBOMP_PREFIX" &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
-          source $HOME/.cargo/env &&
-          echo "=== Setting PyO3 compatibility flag ===" &&
-          export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+          source $HOME/.cargo/env
         
         CIBW_ENVIRONMENT_WINDOWS: >
           PYTHONUTF8=1
           PYTHONIOENCODING=utf-8
           RUST_BACKTRACE=1
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
           PATH="$USERPROFILE\\.cargo\\bin;$PATH"
         
         # Windows-specific GBDT file fix in build step
@@ -167,8 +164,6 @@ jobs:
           powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
           pip install maturin
         
-        CIBW_BEFORE_BUILD_MACOS: >
-          export PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
         
         # macOS Intel (x86_64) environment
         CIBW_ENVIRONMENT_MACOS_X86_64: >
@@ -178,7 +173,6 @@ jobs:
           CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
           RUSTFLAGS="-L $(brew --prefix libomp)/lib"
           MACOSX_DEPLOYMENT_TARGET="13.0"
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
           PATH="$HOME/.cargo/bin:$PATH"
         
         # macOS Apple Silicon (arm64) environment
@@ -189,7 +183,6 @@ jobs:
           CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
           RUSTFLAGS="-L $(brew --prefix libomp)/lib"
           MACOSX_DEPLOYMENT_TARGET="14.0"
-          PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
           PATH="$HOME/.cargo/bin:$PATH"
         
         # Test the wheels (bash approach for Windows UTF-8 handling)
