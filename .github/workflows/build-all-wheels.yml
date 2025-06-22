@@ -176,12 +176,19 @@ jobs:
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env &&
-          echo "=== DEBUGGING: Environment Variables in BEFORE_ALL ===" &&
+          echo "=== Setting up OpenMP environment for all builds ===" &&
+          echo "export LIBRARY_PATH=\"$LIBOMP_PREFIX/lib:\$LIBRARY_PATH\"" >> ~/.bashrc &&
+          echo "export CPATH=\"$LIBOMP_PREFIX/include:\$CPATH\"" >> ~/.bashrc &&
+          echo "export LDFLAGS=\"-L$LIBOMP_PREFIX/lib\"" >> ~/.bashrc &&
+          echo "export CPPFLAGS=\"-I$LIBOMP_PREFIX/include\"" >> ~/.bashrc &&
+          echo "export RUSTFLAGS=\"-L $LIBOMP_PREFIX/lib -C link-arg=-lomp\"" >> ~/.bashrc &&
+          source ~/.bashrc &&
+          echo "=== DEBUGGING: Environment Variables after setup ===" &&
           echo "RUSTFLAGS: $RUSTFLAGS" &&
           echo "LDFLAGS: $LDFLAGS" &&
           echo "LIBRARY_PATH: $LIBRARY_PATH" &&
           echo "CPATH: $CPATH" &&
-          echo "MACOSX_DEPLOYMENT_TARGET: $MACOSX_DEPLOYMENT_TARGET" &&
+          echo "OpenMP prefix: $LIBOMP_PREFIX" &&
           echo "=== END DEBUG INFO ==="
         
         CIBW_ENVIRONMENT_WINDOWS: >
