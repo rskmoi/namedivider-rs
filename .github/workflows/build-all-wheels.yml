@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -120,7 +120,7 @@ jobs:
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v2.17.0
+      uses: pypa/cibuildwheel@v3.0.0
       with:
         package-dir: python
         output-dir: wheelhouse
@@ -207,7 +207,7 @@ jobs:
         # Count total wheels
         total_wheels=$(find dist/ -name "*.whl" -type f | wc -l)
         echo "Total wheels built: $total_wheels"
-        echo "Expected: 20 wheels (5 Python versions × 4 platforms)"
+        echo "Expected: 30 wheels (5 Python versions × 6 platforms: Linux×2 + Windows + macOS×2)"
         
         # List wheels by platform
         echo ""
@@ -241,10 +241,10 @@ jobs:
         # Summary
         echo ""
         echo "=== Summary ==="
-        if [ "$total_wheels" -eq 20 ]; then
-          echo "✅ SUCCESS: All 20 wheels built successfully!"
+        if [ "$total_wheels" -eq 30 ]; then
+          echo "✅ SUCCESS: All 30 wheels built successfully!"
         else
-          echo "❌ WARNING: Expected 20 wheels, got $total_wheels"
+          echo "❌ WARNING: Expected 30 wheels, got $total_wheels"
         fi
 
     - name: Upload combined wheels
