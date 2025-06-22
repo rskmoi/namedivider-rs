@@ -123,7 +123,7 @@ jobs:
         # Platform-specific before build commands (temporary for debugging)
         CIBW_BEFORE_BUILD_LINUX: "pip install maturin"
         CIBW_BEFORE_BUILD_WINDOWS: "pip install maturin"
-        CIBW_BEFORE_BUILD_MACOS: >
+        CIBW_BEFORE_BUILD: >
           echo "=== Build Environment Check (DEBUG) ===" &&
           echo "RUSTFLAGS: $RUSTFLAGS" &&
           echo "LDFLAGS: $LDFLAGS" &&
