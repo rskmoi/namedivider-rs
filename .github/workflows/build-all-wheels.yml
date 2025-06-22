@@ -120,10 +120,8 @@ jobs:
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
-        # Platform-specific before build commands (temporary for debugging)
-        CIBW_BEFORE_BUILD_LINUX: "pip install maturin"
-        CIBW_BEFORE_BUILD_WINDOWS: "pip install maturin"
-        CIBW_BEFORE_BUILD: "echo '=== BEFORE BUILD DEBUG ===' && echo 'RUSTFLAGS:' $RUSTFLAGS && echo 'LDFLAGS:' $LDFLAGS && pip install maturin"
+        # Before build command for all platforms
+        CIBW_BEFORE_BUILD: "pip install maturin"
 
     - name: Debug environment variables (macOS)
       if: runner.os == 'macOS'
@@ -175,21 +173,7 @@ jobs:
           ls -la "$LIBOMP_PREFIX/include/" &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
-          source $HOME/.cargo/env &&
-          echo "=== Setting up OpenMP environment for all builds ===" &&
-          echo "export LIBRARY_PATH=\"$LIBOMP_PREFIX/lib:\$LIBRARY_PATH\"" >> ~/.bashrc &&
-          echo "export CPATH=\"$LIBOMP_PREFIX/include:\$CPATH\"" >> ~/.bashrc &&
-          echo "export LDFLAGS=\"-L$LIBOMP_PREFIX/lib\"" >> ~/.bashrc &&
-          echo "export CPPFLAGS=\"-I$LIBOMP_PREFIX/include\"" >> ~/.bashrc &&
-          echo "export RUSTFLAGS=\"-L $LIBOMP_PREFIX/lib -C link-arg=-lomp\"" >> ~/.bashrc &&
-          source ~/.bashrc &&
-          echo "=== DEBUGGING: Environment Variables after setup ===" &&
-          echo "RUSTFLAGS: $RUSTFLAGS" &&
-          echo "LDFLAGS: $LDFLAGS" &&
-          echo "LIBRARY_PATH: $LIBRARY_PATH" &&
-          echo "CPATH: $CPATH" &&
-          echo "OpenMP prefix: $LIBOMP_PREFIX" &&
-          echo "=== END DEBUG INFO ==="
+          source $HOME/.cargo/env
         
         CIBW_ENVIRONMENT_WINDOWS: >
           PYTHONUTF8=1
@@ -207,7 +191,7 @@ jobs:
         CIBW_ENVIRONMENT_MACOS_X86_64: >
           LIBRARY_PATH="/usr/local/opt/libomp/lib:$LIBRARY_PATH"
           CPATH="/usr/local/opt/libomp/include:$CPATH"
-          LDFLAGS="-L/usr/local/opt/libomp/lib"
+          LDFLAGS="-L/usr/local/opt/libomp/lib -lomp"
           CPPFLAGS="-I/usr/local/opt/libomp/include"
           RUSTFLAGS="-L /usr/local/opt/libomp/lib -C link-arg=-lomp"
           MACOSX_DEPLOYMENT_TARGET="13.0"
@@ -218,7 +202,7 @@ jobs:
         CIBW_ENVIRONMENT_MACOS_ARM64: >
           LIBRARY_PATH="/opt/homebrew/opt/libomp/lib:$LIBRARY_PATH"
           CPATH="/opt/homebrew/opt/libomp/include:$CPATH"
-          LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
+          LDFLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
           CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
           RUSTFLAGS="-L /opt/homebrew/opt/libomp/lib -C link-arg=-lomp"
           MACOSX_DEPLOYMENT_TARGET="14.0"
