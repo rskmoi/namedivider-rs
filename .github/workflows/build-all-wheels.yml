@@ -10,7 +10,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
+        # os: [ubuntu-latest, windows-latest, macos-13, macos-latest]
+        # Temporarily test macOS only for OpenMP debugging
+        os: [macos-13, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -120,6 +122,22 @@ jobs:
           source $HOME/.cargo/env
         CIBW_BEFORE_BUILD: "pip install maturin"
 
+    - name: Debug environment variables (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        echo "=== Debug: Environment Variables ==="
+        echo "MACOSX_DEPLOYMENT_TARGET: $MACOSX_DEPLOYMENT_TARGET"
+        echo "LIBRARY_PATH: $LIBRARY_PATH"
+        echo "LDFLAGS: $LDFLAGS"
+        echo "RUSTFLAGS: $RUSTFLAGS"
+        echo "Architecture: $(uname -m)"
+        echo "OpenMP lib paths:"
+        if [[ "$(uname -m)" == "x86_64" ]]; then
+          ls -la /usr/local/opt/libomp/lib/ 2>/dev/null || echo "Intel OpenMP path not found"
+        else
+          ls -la /opt/homebrew/opt/libomp/lib/ 2>/dev/null || echo "Apple Silicon OpenMP path not found"
+        fi
+
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
       uses: pypa/cibuildwheel@v2.20.0
@@ -149,6 +167,9 @@ jobs:
           brew install libomp &&
           LIBOMP_PREFIX=$(brew --prefix libomp) &&
           echo "OpenMP installed at: $LIBOMP_PREFIX" &&
+          echo "=== Verifying OpenMP installation ===" &&
+          ls -la "$LIBOMP_PREFIX/lib/" &&
+          ls -la "$LIBOMP_PREFIX/include/" &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
@@ -165,25 +186,27 @@ jobs:
           pip install maturin
         
         
-        # macOS Intel (x86_64) environment
+        # macOS Intel (x86_64) environment  
         CIBW_ENVIRONMENT_MACOS_X86_64: >
-          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
-          CPATH="$(brew --prefix libomp)/include:$CPATH"
-          LDFLAGS="-L$(brew --prefix libomp)/lib"
-          CPPFLAGS="-I$(brew --prefix libomp)/include"
-          RUSTFLAGS="-L $(brew --prefix libomp)/lib -C link-arg=-lomp"
+          LIBRARY_PATH="/usr/local/opt/libomp/lib:$LIBRARY_PATH"
+          CPATH="/usr/local/opt/libomp/include:$CPATH"
+          LDFLAGS="-L/usr/local/opt/libomp/lib"
+          CPPFLAGS="-I/usr/local/opt/libomp/include"
+          RUSTFLAGS="-L /usr/local/opt/libomp/lib -C link-arg=-lomp"
           MACOSX_DEPLOYMENT_TARGET="13.0"
           PATH="$HOME/.cargo/bin:$PATH"
+          RUST_LOG="debug"
         
         # macOS Apple Silicon (arm64) environment
         CIBW_ENVIRONMENT_MACOS_ARM64: >
-          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
-          CPATH="$(brew --prefix libomp)/include:$CPATH"
-          LDFLAGS="-L$(brew --prefix libomp)/lib"
-          CPPFLAGS="-I$(brew --prefix libomp)/include"
-          RUSTFLAGS="-L $(brew --prefix libomp)/lib -C link-arg=-lomp"
+          LIBRARY_PATH="/opt/homebrew/opt/libomp/lib:$LIBRARY_PATH"
+          CPATH="/opt/homebrew/opt/libomp/include:$CPATH"
+          LDFLAGS="-L/opt/homebrew/opt/libomp/lib"
+          CPPFLAGS="-I/opt/homebrew/opt/libomp/include"
+          RUSTFLAGS="-L /opt/homebrew/opt/libomp/lib -C link-arg=-lomp"
           MACOSX_DEPLOYMENT_TARGET="14.0"
           PATH="$HOME/.cargo/bin:$PATH"
+          RUST_LOG="debug"
         
         # Test the wheels (bash approach for Windows UTF-8 handling)
         CIBW_TEST_COMMAND_WINDOWS: >
@@ -225,7 +248,8 @@ jobs:
         total_wheels=$(find dist/ -name "*.whl" -type f | wc -l)
         echo "Total wheels built: $total_wheels"
         # echo "Expected: 30 wheels (5 Python versions × 6 platforms: Linux×2 + Windows + macOS×2)"
-        echo "Expected: 6 wheels (Python 3.13 × 6 platforms: Linux×2 + Windows + macOS×2)"
+        # echo "Expected: 6 wheels (Python 3.13 × 6 platforms: Linux×2 + Windows + macOS×2)"
+        echo "Expected: 2 wheels (Python 3.13 × 2 macOS platforms: Intel + Apple Silicon)"
         
         # List wheels by platform
         echo ""
@@ -264,10 +288,15 @@ jobs:
         # else
         #   echo "❌ WARNING: Expected 30 wheels, got $total_wheels"
         # fi
-        if [ "$total_wheels" -eq 6 ]; then
-          echo "✅ SUCCESS: All 6 Python 3.13 wheels built successfully!"
+        # if [ "$total_wheels" -eq 6 ]; then
+        #   echo "✅ SUCCESS: All 6 Python 3.13 wheels built successfully!"
+        # else
+        #   echo "❌ WARNING: Expected 6 wheels, got $total_wheels"
+        # fi
+        if [ "$total_wheels" -eq 2 ]; then
+          echo "✅ SUCCESS: All 2 macOS Python 3.13 wheels built successfully!"
         else
-          echo "❌ WARNING: Expected 6 wheels, got $total_wheels"
+          echo "❌ WARNING: Expected 2 wheels, got $total_wheels"
         fi
 
     - name: Upload combined wheels
