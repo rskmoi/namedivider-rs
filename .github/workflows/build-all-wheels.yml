@@ -120,10 +120,11 @@ jobs:
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
-        CIBW_BEFORE_BUILD: "pip install maturin"
-        
+        # Platform-specific before build commands (temporary for debugging)
+        CIBW_BEFORE_BUILD_LINUX: "pip install maturin"
+        CIBW_BEFORE_BUILD_WINDOWS: "pip install maturin"
         CIBW_BEFORE_BUILD_MACOS: >
-          echo "=== Build Environment Check ===" &&
+          echo "=== Build Environment Check (DEBUG) ===" &&
           echo "RUSTFLAGS: $RUSTFLAGS" &&
           echo "LDFLAGS: $LDFLAGS" &&
           echo "MACOSX_DEPLOYMENT_TARGET: $MACOSX_DEPLOYMENT_TARGET" &&
