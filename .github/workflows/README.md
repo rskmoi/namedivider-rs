@@ -75,7 +75,11 @@
 
 ### macOS環境の特殊対応
 - **OpenMP**: LightGBM用にlibomp自動インストール
-- **環境変数**: LIBRARY_PATH, CPATH, LDFLAGS設定
+- **明示的リンク**: build.rsによるプラットフォーム別OpenMPリンク設定
+- **Deployment Target**: Intel Mac（13.0以降）、Apple Silicon（14.0以降）
+- **アーキテクチャ別パス**: 
+  - Intel Mac: `/usr/local/opt/libomp/lib`
+  - Apple Silicon: `/opt/homebrew/opt/libomp/lib`
 
 ## 🔧 保守・更新
 
