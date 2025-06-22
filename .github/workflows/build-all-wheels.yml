@@ -123,15 +123,7 @@ jobs:
         # Platform-specific before build commands (temporary for debugging)
         CIBW_BEFORE_BUILD_LINUX: "pip install maturin"
         CIBW_BEFORE_BUILD_WINDOWS: "pip install maturin"
-        CIBW_BEFORE_BUILD: >
-          echo "=== Build Environment Check (DEBUG) ===" &&
-          echo "RUSTFLAGS: $RUSTFLAGS" &&
-          echo "LDFLAGS: $LDFLAGS" &&
-          echo "MACOSX_DEPLOYMENT_TARGET: $MACOSX_DEPLOYMENT_TARGET" &&
-          echo "LIBRARY_PATH: $LIBRARY_PATH" &&
-          echo "CPATH: $CPATH" &&
-          echo "Architecture: $(uname -m)" &&
-          pip install maturin
+        CIBW_BEFORE_BUILD: "echo '=== BEFORE BUILD DEBUG ===' && echo 'RUSTFLAGS:' $RUSTFLAGS && echo 'LDFLAGS:' $LDFLAGS && pip install maturin"
 
     - name: Debug environment variables (macOS)
       if: runner.os == 'macOS'
@@ -183,7 +175,14 @@ jobs:
           ls -la "$LIBOMP_PREFIX/include/" &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
-          source $HOME/.cargo/env
+          source $HOME/.cargo/env &&
+          echo "=== DEBUGGING: Environment Variables in BEFORE_ALL ===" &&
+          echo "RUSTFLAGS: $RUSTFLAGS" &&
+          echo "LDFLAGS: $LDFLAGS" &&
+          echo "LIBRARY_PATH: $LIBRARY_PATH" &&
+          echo "CPATH: $CPATH" &&
+          echo "MACOSX_DEPLOYMENT_TARGET: $MACOSX_DEPLOYMENT_TARGET" &&
+          echo "=== END DEBUG INFO ==="
         
         CIBW_ENVIRONMENT_WINDOWS: >
           PYTHONUTF8=1
