@@ -56,11 +56,10 @@ jobs:
           printf "%s" "${FAMILY_NAMES_PART_8}" | remove_newline_if_needed
         } > secret/family_names.txt
         
-        cp secret/family_names.txt namedivider-rs/family_names.txt
         cp secret/family_names.txt namedivider-rs/src/assets/family_names.txt
         
         # Verify reconstruction
-        line_count=$(wc -l < namedivider-rs/family_names.txt)
+        line_count=$(wc -l < namedivider-rs/src/assets/family_names.txt)
         if [ "$line_count" -eq 39999 ]; then
           echo "✓ family_names.txt reconstruction successful ($line_count lines)"
         else
@@ -76,18 +75,6 @@ jobs:
         FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
         FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
         FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
-
-    - name: Set up basic environment (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        # Install basic dependencies on host
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake
-        
-        # Set up Rust on host (will be used as template for containers)
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
-        source $HOME/.cargo/env
-        rustc --version
 
     - name: Build wheels (Linux - using proven pattern)
       if: runner.os == 'Linux'
@@ -120,19 +107,10 @@ jobs:
           if command -v apk >/dev/null 2>&1; then
             echo "Detected: musllinux (Alpine)"
             apk add --no-cache cmake clang-dev llvm-dev build-base
-            echo "Available libclang files:"
-            find /usr -name '*libclang*' -type f 2>/dev/null | head -5
           else
             echo "Detected: manylinux"
             yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
             ln -sf /usr/bin/cmake3 /usr/bin/cmake
-            echo "=== CMake version ==="
-            cmake --version
-            echo "=== Finding clang and libclang ==="
-            find /opt/rh/llvm-toolset-7 -name 'clang' -type f 2>/dev/null || echo 'clang not found'
-            find /opt/rh/llvm-toolset-7 -name '*libclang*' -type f 2>/dev/null | head -3
-            echo "=== Testing direct clang execution ==="
-            /opt/rh/llvm-toolset-7/root/usr/bin/clang --version || echo 'direct clang execution failed'
           fi
           
           echo "=== Installing Rust ==="
