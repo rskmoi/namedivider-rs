@@ -1,0 +1,11 @@
+# Test data (private)
+test-data/10000names.txt
+test-data/*names*.txt
+
+# Benchmark results
+results/
+*.log
+
+# Temporary files
+*.tmp
+*.temp
