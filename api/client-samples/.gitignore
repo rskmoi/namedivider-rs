@@ -1,0 +1,58 @@
+# Build outputs and generated files
+
+# TypeScript/JavaScript
+node_modules/
+dist/
+*.js
+*.js.map
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# Go
+# No specific exclusions needed (Go builds to single binary)
+
+# PHP
+vendor/
+composer.lock
+
+# Ruby
+.bundle/
+vendor/
+
+# C#/.NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.tmp
+
+# Kotlin/Java/Gradle
+build/
+.gradle/
+*.class
+*.jar
+*.war
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

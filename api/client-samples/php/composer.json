@@ -1,0 +1,25 @@
+{
+    "name": "namedivider/api-php-sample",
+    "description": "PHP SDK-like implementation for NameDivider API",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.0",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "classmap": [
+            "SdkLike.php"
+        ]
+    },
+    "scripts": {
+        "test": "php sample.php"
+    },
+    "keywords": ["namedivider", "api", "php", "sdk"],
+    "authors": [
+        {
+            "name": "NameDivider Contributors"
+        }
+    ]
+}

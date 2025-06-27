@@ -1,0 +1,23 @@
+{
+  "name": "namedivider-api-typescript-sample",
+  "version": "1.0.0",
+  "description": "TypeScript SDK-like implementation for NameDivider API",
+  "main": "sample.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node sample.js",
+    "dev": "ts-node sample.ts"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/node-fetch": "^2.6.4",
+    "typescript": "^4.9.0",
+    "ts-node": "^10.9.0"
+  },
+  "keywords": ["namedivider", "api", "typescript", "sdk"],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,25 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+# Rubyのバージョン指定（Ruby 2.7以上を推奨）
+ruby '>= 2.7.0'
+
+# 標準ライブラリのみを使用するため、外部gemの依存関係はありません
+# 必要に応じて以下のgemを追加できます：
+
+group :development, :test do
+  # コード品質チェック
+  # gem 'rubocop', '~> 1.0'
+  
+  # テストフレームワーク
+  # gem 'rspec', '~> 3.0'
+  
+  # HTTP通信のモック
+  # gem 'webmock', '~> 3.0'
+end
+
+# 実際のプロジェクトでは以下のようなgemが有用です：
+# gem 'faraday', '~> 2.0'  # より高機能なHTTPクライアント
+# gem 'dry-validation', '~> 1.0'  # バリデーション
+# gem 'concurrent-ruby', '~> 1.0'  # 並行プログラミング
