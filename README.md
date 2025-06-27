@@ -43,7 +43,7 @@ Python版より数十倍オーダーで速いです。
 現在はLinux (x64) Python 3.11用のwheelのみ提供しています：
 
 ```bash
-pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_rust-0.1.0-cp311-cp311-linux_x86_64.whl
+pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_core-0.2.0-cp311-cp311-linux_x86_64.whl
 ```
 
 ライセンスはpython実装と同じです。他のプラットフォームやPythonバージョン用のwheelは順次提供予定です。

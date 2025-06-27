@@ -203,10 +203,10 @@ jobs:
         
         # Test the wheels (bash approach for Windows UTF-8 handling)
         CIBW_TEST_COMMAND_WINDOWS: >
-          bash -c "export LANG=en_US.UTF-8; export LC_ALL=en_US.UTF-8; python -c \"import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')\""
+          bash -c "export LANG=en_US.UTF-8; export LC_ALL=en_US.UTF-8; python -c \"import namedivider_core; print('Module imported successfully'); basic = namedivider_core.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_core.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!'\""
         
         CIBW_TEST_COMMAND_MACOS: >
-          python -c "import namedivider_rust; print('Module imported successfully'); basic = namedivider_rust.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_rust.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
+          python -c "import namedivider_core; print('Module imported successfully'); basic = namedivider_core.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_core.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
         
         # Skip PyPy builds and 32-bit architectures
         CIBW_SKIP: "pp* *-win32 *_i686"
