@@ -203,10 +203,10 @@ jobs:
         
         # Test the wheels using external test script to avoid quote escaping issues
         CIBW_TEST_COMMAND_WINDOWS: >
-          bash -c "export LANG=en_US.UTF-8; export LC_ALL=en_US.UTF-8; python .github/test_script.py"
+          bash -c "export LANG=en_US.UTF-8; export LC_ALL=en_US.UTF-8; python ../.github/test_script.py"
         
         CIBW_TEST_COMMAND_MACOS: >
-          python .github/test_script.py
+          python ../.github/test_script.py
         
         # Skip PyPy builds and 32-bit architectures
         CIBW_SKIP: "pp* *-win32 *_i686"
