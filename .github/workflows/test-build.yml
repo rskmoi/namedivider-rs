@@ -136,27 +136,8 @@ jobs:
         python -m pip install --force-reinstall dist/*.whl
         echo "✓ Wheel installed successfully"
         
-        # Test functionality
-        python -c "
-        import namedivider_core
-        print('✓ Module imported successfully')
-        
-        # Test Basic divider
-        basic = namedivider_core.BasicNameDivider()
-        result1 = basic.divide_name('田中太郎')
-        print(f'Basic result: {result1}')
-        assert str(result1) == '田中 太郎'
-        print('✓ BasicNameDivider test passed')
-        
-        # Test GBDT divider  
-        gbdt = namedivider_core.GBDTNameDivider()
-        result2 = gbdt.divide_name('佐藤花子')
-        print(f'GBDT result: {result2}')
-        assert str(result2) == '佐藤 花子'
-        print('✓ GBDTNameDivider test passed')
-        
-        print('✓ All functionality tests passed!')
-        "
+        # Test functionality using external script
+        python .github/test_script.py
 
     - name: Build Summary
       run: |
