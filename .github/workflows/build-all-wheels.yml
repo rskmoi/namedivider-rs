@@ -149,6 +149,8 @@ jobs:
         CIBW_BEFORE_ALL_WINDOWS: >
           echo "=== Installing build dependencies ===" &&
           choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
+          echo "=== Installing LLVM/Clang 19+ ===" &&
+          choco install llvm --version=19.1.5 --force &&
           echo "=== Installing Rust ===" &&
           curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
         
@@ -170,7 +172,8 @@ jobs:
           PYTHONUTF8=1
           PYTHONIOENCODING=utf-8
           RUST_BACKTRACE=1
-          PATH="$USERPROFILE\\.cargo\\bin;$PATH"
+          PATH="$USERPROFILE\\.cargo\\bin;C:\\Program Files\\LLVM\\bin;$PATH"
+          BINDGEN_CLANG_PATH="C:\\Program Files\\LLVM\\bin\\clang.exe"
         
         # Windows-specific GBDT file fix in build step
         CIBW_BEFORE_BUILD_WINDOWS: >
