@@ -122,7 +122,7 @@ jobs:
         CIBW_BEFORE_BUILD: "pip install maturin"
         
         # Test commands - run inside build environment
-        CIBW_TEST_COMMAND: "python python/tests/test_cibw_thread_safety.py"
+        CIBW_TEST_COMMAND: "python tests/test_cibw_thread_safety.py"
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
@@ -196,7 +196,7 @@ jobs:
         CIBW_SKIP: "pp* *-win32 *_i686"
         
         # Test commands - run inside build environment (same as Linux)
-        CIBW_TEST_COMMAND: "python python/tests/test_cibw_thread_safety.py"
+        CIBW_TEST_COMMAND: "python tests/test_cibw_thread_safety.py"
 
 
     - name: Summary
