@@ -2,12 +2,6 @@ name: Test Thread Safety (Reproduce macOS Crash)
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'python/**'
-      - 'namedivider-rs/**'
-      - '.github/workflows/test-thread-safety-v2.yml'
-      - 'python/tests/test_cibw_thread_safety.py'
 
 jobs:
   test-thread-safety:
