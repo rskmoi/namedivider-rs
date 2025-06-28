@@ -1,12 +1,5 @@
 # namedivider-rs
 
-## 2025-06-19
-
-現在作業中のためREADMEと実態が合っていない状態が数日続く予定です。作業が終わると以下の状態になる予定です。(追記)2025/07前半あたりまでかかってしまいそうです。
-- namedivider-rs v0.2.0がリリースされる
-- namedivider-api v0.3.0がリリースされる
-- PythonラッパーがPython3.9-3.13、linux/mac/windowsで動作する
-
 ## About
 
 姓名が連結している日本語の名前を姓と名に分割するライブラリ**NameDivider**のrust実装です。
@@ -27,26 +20,43 @@ lightgbmのモデルをPythonからRustに移植した結果、完璧に同じ�
 
 ## Python
 
-Python版をnamedivider-rsのPythonラッパーにするという可能性があり、その練習としてPythonライブラリとして使えるようにwheelファイルを公開しています。
+Python版をnamedivider-rsのPythonラッパーにするという可能性があり、namedivider-pythonのv0.4からOptionalではありますがこのRust実装をバックエンドとした高速化ができるようになっています。
 
-Python版より数十倍オーダーで速いです。
+`namedivider_core`という名前でパッケージ化・PyPIで配布しています。
 
-### v0.2.0での改善点
-
-- lightgbm-rsの改善により、自動的なLGBM関数bindingが可能になりました
-- バッチ処理機能（`divide_names`メソッド）を追加しました
-- エラーハンドリングとパッケージ名の一貫性を改善しました
-- namedivider-pythonとの統合がより安定しました
-
-### インストール
-
-現在はLinux (x64) Python 3.11用のwheelのみ提供しています：
-
-```bash
-pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/namedivider_core-0.2.0-cp311-cp311-linux_x86_64.whl
+- install
+```
+pip install namedivider-core
 ```
 
-ライセンスはpython実装と同じです。他のプラットフォームやPythonバージョン用のwheelは順次提供予定です。
+- usage
+```
+from namedivider_core import BasicNameDivider, GBDTNameDivider
+
+# あとは基本機能はnamedivider-pythonと同様の挙動
+
+from pprint import pprint
+
+basic_divider = BasicNameDivider() # BasicNameDivider is fast but accuracy is 99.2%
+divided_name = basic_divider.divide_name("菅義偉")
+
+gbdt_divider = GBDTNameDivider() # GBDTNameDivider is slow but accuracy is 99.9%
+divided_name = gbdt_divider.divide_name("菅義偉")
+
+print(divided_name)
+# 菅 義偉
+
+pprint(divided_name.to_dict())
+# {'algorithm': 'kanji_feature',
+# 'family': '菅',
+# 'given': '義偉',
+# 'score': 0.7300634880343344,
+# 'separator': ' '}
+```
+
+
+ライセンスはpython実装と同じです。
+
 
 ## CI/CD
 
@@ -59,6 +69,6 @@ pip install https://github.com/rskmoi/namedivider-rs/releases/download/v0.2.0/na
   - Windows: win_amd64
   - macOS Intel: x86_64 (macOS 13.0以降)
   - macOS Apple Silicon: arm64 (macOS 14.0以降)
-- **総計**: 30種類のホイール環境をサポート
+- **総計**: 25種類のホイール環境をサポート
 
 詳細な技術情報については [ワークフローのドキュメント](.github/workflows/README.md) を参照してください。
