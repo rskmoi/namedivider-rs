@@ -7,7 +7,7 @@ on:
       - 'python/**'
       - 'namedivider-rs/**'
       - '.github/workflows/test-thread-safety-v2.yml'
-      - 'python/tests/test_thread_crash.py'
+      - 'python/tests/test_cibw_thread_safety.py'
 
 jobs:
   test-thread-safety:
@@ -122,40 +122,7 @@ jobs:
         CIBW_BEFORE_BUILD: "pip install maturin"
         
         # Test commands - run inside build environment
-        CIBW_TEST_COMMAND: >
-          echo "=== Thread Safety Test inside build environment ===" &&
-          python -c "
-          import namedivider_core
-          print('✓ namedivider-core imported successfully')
-          
-          # Single thread test
-          print('=== Single Thread Test ===')
-          divider = namedivider_core.GBDTNameDivider()
-          result = divider.divide_name('菅義偉')
-          print(f'Single thread: {result.family} | {result.given}')
-          
-          # Multi thread test
-          print('=== Multi Thread Test ===')
-          import concurrent.futures
-          import time
-          
-          def worker(worker_id):
-              for i in range(50):
-                  result = divider.divide_name('田中太郎')
-                  time.sleep(0.001)
-              return worker_id
-          
-          try:
-              with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-                  futures = [executor.submit(worker, i) for i in range(8)]
-                  for future in concurrent.futures.as_completed(futures, timeout=30):
-                      worker_id = future.result()
-                      print(f'Worker {worker_id} completed')
-              print('✅ Multi-thread test completed successfully')
-          except Exception as e:
-              print(f'❌ Multi-thread test failed: {e}')
-              raise
-          "
+        CIBW_TEST_COMMAND: "python python/tests/test_cibw_thread_safety.py"
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
@@ -229,40 +196,7 @@ jobs:
         CIBW_SKIP: "pp* *-win32 *_i686"
         
         # Test commands - run inside build environment (same as Linux)
-        CIBW_TEST_COMMAND: >
-          echo "=== Thread Safety Test inside build environment ===" &&
-          python -c "
-          import namedivider_core
-          print('✓ namedivider-core imported successfully')
-          
-          # Single thread test
-          print('=== Single Thread Test ===')
-          divider = namedivider_core.GBDTNameDivider()
-          result = divider.divide_name('菅義偉')
-          print(f'Single thread: {result.family} | {result.given}')
-          
-          # Multi thread test
-          print('=== Multi Thread Test ===')
-          import concurrent.futures
-          import time
-          
-          def worker(worker_id):
-              for i in range(50):
-                  result = divider.divide_name('田中太郎')
-                  time.sleep(0.001)
-              return worker_id
-          
-          try:
-              with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-                  futures = [executor.submit(worker, i) for i in range(8)]
-                  for future in concurrent.futures.as_completed(futures, timeout=30):
-                      worker_id = future.result()
-                      print(f'Worker {worker_id} completed')
-              print('✅ Multi-thread test completed successfully')
-          except Exception as e:
-              print(f'❌ Multi-thread test failed: {e}')
-              raise
-          "
+        CIBW_TEST_COMMAND: "python python/tests/test_cibw_thread_safety.py"
 
 
     - name: Summary
