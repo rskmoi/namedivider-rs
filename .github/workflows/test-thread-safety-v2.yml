@@ -122,26 +122,7 @@ jobs:
         CIBW_BEFORE_BUILD: "pip install maturin"
         
         # Test commands - run inside build environment  
-        CIBW_TEST_COMMAND: >
-          python -c "
-          import namedivider_core;
-          print('=== Single Thread Test ===');
-          divider = namedivider_core.GBDTNameDivider();
-          result = divider.divide_name('菅義偉');
-          print(f'Single: {result.family} | {result.given}');
-          print('=== Multi Thread Test ===');
-          import concurrent.futures, time;
-          def worker(i):
-              for j in range(10):
-                  divider.divide_name('田中太郎');
-                  time.sleep(0.001);
-              return i;
-          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-              futures = [executor.submit(worker, i) for i in range(4)];
-              results = [f.result() for f in concurrent.futures.as_completed(futures, timeout=10)];
-          print(f'Workers completed: {len(results)}');
-          print('✅ Thread test completed');
-          "
+        CIBW_TEST_COMMAND: "python -c \"import namedivider_core, concurrent.futures; divider = namedivider_core.GBDTNameDivider(); print('Single:', divider.divide_name('菅義偉')); print('Multi-thread...'); f = lambda i: [divider.divide_name('田中太郎') for _ in range(10)]; list(concurrent.futures.ThreadPoolExecutor(4).map(f, range(4))); print('✅ Done')\""
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
@@ -215,26 +196,7 @@ jobs:
         CIBW_SKIP: "pp* *-win32 *_i686"
         
         # Test commands - run inside build environment (same as Linux)
-        CIBW_TEST_COMMAND: >
-          python -c "
-          import namedivider_core;
-          print('=== Single Thread Test ===');
-          divider = namedivider_core.GBDTNameDivider();
-          result = divider.divide_name('菅義偉');
-          print(f'Single: {result.family} | {result.given}');
-          print('=== Multi Thread Test ===');
-          import concurrent.futures, time;
-          def worker(i):
-              for j in range(10):
-                  divider.divide_name('田中太郎');
-                  time.sleep(0.001);
-              return i;
-          with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-              futures = [executor.submit(worker, i) for i in range(4)];
-              results = [f.result() for f in concurrent.futures.as_completed(futures, timeout=10)];
-          print(f'Workers completed: {len(results)}');
-          print('✅ Thread test completed');
-          "
+        CIBW_TEST_COMMAND: "python -c \"import namedivider_core, concurrent.futures; divider = namedivider_core.GBDTNameDivider(); print('Single:', divider.divide_name('菅義偉')); print('Multi-thread...'); f = lambda i: [divider.divide_name('田中太郎') for _ in range(10)]; list(concurrent.futures.ThreadPoolExecutor(4).map(f, range(4))); print('✅ Done')\""
 
 
     - name: Summary
