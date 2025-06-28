@@ -1,0 +1,205 @@
+name: Test Thread Safety (Reproduce macOS Crash)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-thread-safety:
+    name: Build and test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux builds (manylinux only, Python 3.13)
+          - os: ubuntu-latest
+            platform: linux
+          # Windows builds (Python 3.13)
+          - os: windows-latest
+            platform: windows
+          # macOS Intel (x86_64) - 最も問題が発生しやすい環境
+          - os: macos-13
+            platform: macos
+            macos_target: "13.0"
+          # macOS Apple Silicon (arm64)
+          - os: macos-latest
+            platform: macos
+            macos_target: "14.0"
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Reconstruct family_names.txt
+      shell: bash
+      run: |
+        mkdir -p secret
+        
+        # Function to add newline if needed
+        add_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" != *$'\n' ]]; then
+            printf "%s\n" "$content"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Function to remove newline if needed  
+        remove_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" == *$'\n' ]]; then
+            printf "%s" "${content%$'\n'}"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        
+        # Direct sequential output approach for perfect reconstruction
+        {
+          printf "%s" "${FAMILY_NAMES_PART_1}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_2}" | add_newline_if_needed  
+          printf "%s" "${FAMILY_NAMES_PART_3}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_4}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_5}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_6}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_7}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_8}" | remove_newline_if_needed
+        } > secret/family_names.txt
+        
+        cp secret/family_names.txt namedivider-rs/src/assets/family_names.txt
+        
+        # Verify reconstruction
+        line_count=$(wc -l < namedivider-rs/src/assets/family_names.txt)
+        if [ "$line_count" -eq 39999 ]; then
+          echo "✓ family_names.txt reconstruction successful ($line_count lines)"
+        else
+          echo "✗ family_names.txt reconstruction failed: got $line_count lines, expected 39999"
+          exit 1
+        fi
+      env:
+        FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
+        FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
+        FAMILY_NAMES_PART_3: ${{ secrets.FAMILY_NAMES_PART_3 }}
+        FAMILY_NAMES_PART_4: ${{ secrets.FAMILY_NAMES_PART_4 }}
+        FAMILY_NAMES_PART_5: ${{ secrets.FAMILY_NAMES_PART_5 }}
+        FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
+        FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
+        FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
+
+    - name: Build wheels (Linux - using proven pattern)
+      if: runner.os == 'Linux'
+      run: |
+        # Install cibuildwheel
+        python -m pip install cibuildwheel
+        
+        # Build manylinux only (Python 3.13)
+        echo "=== Building manylinux wheels ==="
+        export CIBW_BUILD="cp313-manylinux_x86_64"
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_SKIP="*-musllinux*"
+        python -m cibuildwheel python/ --output-dir wheelhouse/
+      env:
+        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
+        CIBW_BEFORE_ALL_LINUX: |
+          echo "=== Installing build dependencies ==="
+          echo "Detected: manylinux"
+          yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
+          ln -sf /usr/bin/cmake3 /usr/bin/cmake
+          
+          echo "=== Installing Rust ==="
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+          source $HOME/.cargo/env
+        CIBW_BEFORE_BUILD: "pip install maturin"
+        
+        # Test commands - run inside build environment  
+        CIBW_TEST_COMMAND: "python -c \"import namedivider_core, concurrent.futures; divider = namedivider_core.GBDTNameDivider(); print('Single:', divider.divide_name('菅義偉')); print('Multi-thread...'); f = lambda i: [divider.divide_name('田中太郎') for _ in range(10)]; list(concurrent.futures.ThreadPoolExecutor(4).map(f, range(4))); print('✅ Done')\""
+
+    - name: Build wheels (Windows/macOS)
+      if: runner.os != 'Linux'
+      uses: pypa/cibuildwheel@v2.20.0
+      with:
+        package-dir: python
+        output-dir: wheelhouse
+      env:
+        # Build only Python 3.13 (64-bit only)
+        CIBW_BUILD: "cp313-*"
+        
+        # macOS deployment target based on matrix (Intel: 13.0, Apple Silicon: 14.0)
+        CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
+        
+        # Windows-specific setup
+        CIBW_BEFORE_ALL_WINDOWS: >
+          echo "=== Installing build dependencies ===" &&
+          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
+          echo "=== Installing LLVM/Clang 19+ ===" &&
+          choco install llvm --version=19.1.5 --force &&
+          echo "=== Installing Rust ===" &&
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+        
+        # macOS-specific setup
+        CIBW_BEFORE_ALL_MACOS: >
+          echo "=== Installing build dependencies ===" &&
+          if ! command -v cmake &> /dev/null; then
+            brew install cmake
+          fi &&
+          echo "Installing OpenMP (libomp) for LightGBM..." &&
+          brew install libomp &&
+          LIBOMP_PREFIX=$(brew --prefix libomp) &&
+          echo "OpenMP installed at: $LIBOMP_PREFIX" &&
+          echo "=== Installing Rust ===" &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+          source $HOME/.cargo/env
+        
+        CIBW_ENVIRONMENT_WINDOWS: >
+          PYTHONUTF8=1
+          PYTHONIOENCODING=utf-8
+          RUST_BACKTRACE=1
+          PATH="$USERPROFILE\\.cargo\\bin;C:\\Program Files\\LLVM\\bin;$PATH"
+          BINDGEN_CLANG_PATH="C:\\Program Files\\LLVM\\bin\\clang.exe"
+        
+        # Windows-specific GBDT file fix in build step
+        CIBW_BEFORE_BUILD_WINDOWS: >
+          powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
+          pip install maturin
+        
+        # macOS Intel (x86_64) environment
+        CIBW_ENVIRONMENT_MACOS_X86_64: >
+          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
+          CPATH="$(brew --prefix libomp)/include:$CPATH"
+          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
+          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
+          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
+          MACOSX_DEPLOYMENT_TARGET="13.0"
+          PATH="$HOME/.cargo/bin:$PATH"
+        
+        # macOS Apple Silicon (arm64) environment
+        CIBW_ENVIRONMENT_MACOS_ARM64: >
+          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
+          CPATH="$(brew --prefix libomp)/include:$CPATH"
+          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
+          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
+          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
+          MACOSX_DEPLOYMENT_TARGET="14.0"
+          PATH="$HOME/.cargo/bin:$PATH"
+        
+        # Skip PyPy builds and 32-bit architectures
+        CIBW_SKIP: "pp* *-win32 *_i686"
+        
+        # Test commands - run inside build environment (same as Linux)
+        CIBW_TEST_COMMAND: "python -c \"import namedivider_core, concurrent.futures; divider = namedivider_core.GBDTNameDivider(); print('Single:', divider.divide_name('菅義偉')); print('Multi-thread...'); f = lambda i: [divider.divide_name('田中太郎') for _ in range(10)]; list(concurrent.futures.ThreadPoolExecutor(4).map(f, range(4))); print('✅ Done')\""
+
+
+    - name: Summary
+      run: |
+        echo "=== Final Summary ==="
+        echo "Thread safety tests completed using cibuildwheel build environment."
+        echo "All tests run inside the same environment where wheels are built,"
+        echo "avoiding platform compatibility issues."
+        echo ""
+        echo "Expected behavior:"
+        echo "- macOS: Thread safety tests should fail due to LightGBM Booster issues"
+        echo "- Linux/Windows: Should generally pass with proper thread handling"

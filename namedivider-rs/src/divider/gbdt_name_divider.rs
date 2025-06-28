@@ -8,6 +8,9 @@ use crate::feature::family_name::FamilyNameRepository;
 use crate::feature::kanji::KanjiStatisticsRepository;
 use lightgbm::Booster;
 use regex::Regex;
+use std::sync::Arc;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub struct GBDTNameDivider {
     pub gbdt_score_calculator: GBDTScoreCalculator,
@@ -39,11 +42,17 @@ pub fn get_gbdt_name_divider(
         .as_ref()
         .to_owned();
     let model_str = std::str::from_utf8(&contents).unwrap();
-    let model = Booster::from_string(model_str).unwrap();
+    let model_string = Arc::new(model_str.to_string());
+
+    // Pre-compute hash once during initialization for fast lookup
+    let mut hasher = DefaultHasher::new();
+    model_string.hash(&mut hasher);
+    let model_hash = hasher.finish();
 
     let gbdt_score_calculator = GBDTScoreCalculator {
         feature_extractor,
-        model,
+        model_string,
+        model_hash,
     };
     let name_divider_base = NameDividerBase {
         separator,

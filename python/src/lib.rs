@@ -112,7 +112,7 @@ impl PyBasicNameDivider {
     }
 }
 
-#[pyclass(unsendable, name = "GBDTNameDivider")]
+#[pyclass(name = "GBDTNameDivider")]
 struct PyGBDTNameDivider {
     divider: GBDTNameDivider,
 }
@@ -166,5 +166,9 @@ fn namedivider_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyDividedName>()?;
     m.add_class::<PyBasicNameDivider>()?;
     m.add_class::<PyGBDTNameDivider>()?;
+    
+    // Add version information from Cargo.toml
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    
     Ok(())
 }
