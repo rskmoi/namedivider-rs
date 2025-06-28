@@ -195,11 +195,7 @@ jobs:
     - name: Install built wheel
       run: |
         echo "=== Installing built wheel ==="
-        if [ "${{ runner.os }}" = "Windows" ]; then
-          pip install wheelhouse/*.whl
-        else
-          pip install wheelhouse/*.whl
-        fi
+        pip install wheelhouse/*.whl --force-reinstall --no-deps
       shell: bash
 
     - name: Verify basic functionality
@@ -215,6 +211,28 @@ jobs:
         print(f'✓ GBDTNameDivider: {result}')
         print('✓ Basic functionality verified')
         "
+
+    - name: Simple single-thread test
+      run: |
+        echo "=== Simple Single Thread Test ==="
+        python -c "
+        import namedivider_core
+        import time
+        
+        print('Testing single-threaded operation...')
+        divider = namedivider_core.GBDTNameDivider()
+        
+        test_names = ['菅義偉', '田中太郎', '佐藤花子', '山田一郎', '鈴木二郎']
+        
+        for i, name in enumerate(test_names):
+            result = divider.divide_name(name)
+            print(f'{i+1}/5: {name} -> {result.family} | {result.given}')
+            time.sleep(0.01)  # Small delay to simulate work
+        
+        print('✅ Single-thread test completed successfully')
+        "
+      continue-on-error: true
+      id: single_thread_test
 
     - name: Run thread safety test
       run: |
@@ -288,6 +306,7 @@ jobs:
         echo ""
         echo "Platform: ${{ matrix.platform }}"
         echo "Python: 3.13"
+        echo "Single thread test outcome: ${{ steps.single_thread_test.outcome }}"
         echo "Thread test outcome: ${{ steps.thread_test.outcome }}"
         if [ "${{ runner.os }}" = "macOS" ]; then
           echo "Stress test outcome: ${{ steps.stress_test.outcome }}"
