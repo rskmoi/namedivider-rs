@@ -163,6 +163,8 @@ impl PyGBDTNameDivider {
 
 #[pymodule]
 fn namedivider_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    pyo3::prepare_freethreaded_python();
+    
     m.add_class::<PyDividedName>()?;
     m.add_class::<PyBasicNameDivider>()?;
     m.add_class::<PyGBDTNameDivider>()?;
