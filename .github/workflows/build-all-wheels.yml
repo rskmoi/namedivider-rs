@@ -100,7 +100,7 @@ jobs:
         echo "=== Building manylinux wheels ==="
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64 cp314-manylinux_x86_64"
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
-        export CIBW_SKIP="*-musllinux*"
+        export CIBW_SKIP="*-musllinux* cp31?t-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
         
         # Build musllinux separately
@@ -108,7 +108,7 @@ jobs:
         unset CIBW_ENVIRONMENT
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
-        export CIBW_SKIP="*-manylinux*"
+        export CIBW_SKIP="*-manylinux* cp31?t-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
         # Platform-specific configurations
@@ -208,8 +208,8 @@ jobs:
         CIBW_TEST_COMMAND_MACOS: >
           python -c "import namedivider_core; print('Module imported successfully'); basic = namedivider_core.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_core.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
         
-        # Skip PyPy builds and 32-bit architectures
-        CIBW_SKIP: "pp* *-win32 *_i686"
+        # Skip PyPy builds, 32-bit, and free-threaded (t) variants for now
+        CIBW_SKIP: "pp* *-win32 *_i686 cp31?t-*"
 
     - name: Upload wheels
       uses: actions/upload-artifact@v4
