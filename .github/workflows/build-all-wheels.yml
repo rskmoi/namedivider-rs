@@ -1,4 +1,4 @@
-name: Build All Wheels (30 Environments)
+name: Build All Wheels (36 Environments)
 
 on:
   workflow_dispatch:
@@ -98,7 +98,7 @@ jobs:
         
         # Build manylinux first
         echo "=== Building manylinux wheels ==="
-        export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
+        export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64 cp314-manylinux_x86_64"
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
         export CIBW_SKIP="*-musllinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
@@ -107,7 +107,7 @@ jobs:
         echo "=== Building musllinux wheels ==="
         unset CIBW_ENVIRONMENT
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
-        export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64"
+        export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
         export CIBW_SKIP="*-manylinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
@@ -134,13 +134,13 @@ jobs:
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v2.20.0
+      uses: pypa/cibuildwheel@v3
       with:
         package-dir: python
         output-dir: wheelhouse
       env:
-        # Build all Python versions 3.9-3.13 (64-bit only)
-        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+        # Build all Python versions 3.9-3.14 (64-bit only)
+        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
         
         # macOS deployment target based on matrix (Intel: 13.0, Apple Silicon: 14.0)
         CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
@@ -240,7 +240,7 @@ jobs:
         # Count total wheels
         total_wheels=$(find dist/ -name "*.whl" -type f | wc -l)
         echo "Total wheels built: $total_wheels"
-        echo "Expected: 30 wheels (5 Python versions × 6 platforms: Linux×2 + Windows + macOS×2)"
+        echo "Expected: 30 wheels (6 Python versions × 5 platforms: Linux×2 + Windows + macOS×2)"
         
         # List wheels by platform
         echo ""
@@ -266,7 +266,7 @@ jobs:
         # Verify Python versions
         echo ""
         echo "=== Wheels by Python Version ==="
-        for py_ver in cp39 cp310 cp311 cp312 cp313; do
+        for py_ver in cp39 cp310 cp311 cp312 cp313 cp314; do
           count=$(find dist/ -name "*${py_ver}*" -type f | wc -l)
           echo "Python ${py_ver#cp}: $count wheels"
         done
