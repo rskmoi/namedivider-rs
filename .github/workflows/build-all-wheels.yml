@@ -1,4 +1,4 @@
-name: Build All Wheels (36 Environments)
+name: Build All Wheels (30 Environments)
 
 on:
   workflow_dispatch:
@@ -134,7 +134,7 @@ jobs:
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v3
+      uses: pypa/cibuildwheel@v3.2.1
       with:
         package-dir: python
         output-dir: wheelhouse
