@@ -152,7 +152,7 @@ jobs:
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
-          CIBW_BEFORE_BUILD: "pip install maturin"
+        CIBW_BEFORE_BUILD: "pip install maturin"
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
