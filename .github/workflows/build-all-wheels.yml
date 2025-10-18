@@ -111,9 +111,12 @@ jobs:
         export CIBW_SKIP="*-musllinux* cp31?t-*"
         export CIBW_BEFORE_ALL_LINUX='set -e; PM=""; for c in dnf microdnf yum; do if command -v "$c" >/dev/null 2>&1; then PM=$c; break; fi; done; if [ -n "$PM" ]; then $PM install -y llvm llvm-devel clang cmake; else URL16="https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz"; if curl -fsI "$URL16" >/dev/null; then mkdir -p /opt/clang; curl -fsSL "$URL16" | tar -xJ -C /opt/clang --strip-components=1; else echo "No package manager and tarball not reachable" >&2; exit 1; fi; fi; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
+        OLD_CIBW_ENVIRONMENT_LINUX="$CIBW_ENVIRONMENT_LINUX"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib64" LD_LIBRARY_PATH="/usr/lib64:$LD_LIBRARY_PATH"'
         export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else LIBDIR=/opt/clang/lib; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
         export CIBW_BEFORE_BUILD_LINUX='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else LIBDIR=/opt/clang/lib; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
+        export CIBW_ENVIRONMENT_LINUX="$OLD_CIBW_ENVIRONMENT_LINUX"
         
         # Build musllinux (cp39–cp313) using musllinux_1_2
         echo "=== Building musllinux wheels (cp39–cp313 on musllinux_1_2) ==="
