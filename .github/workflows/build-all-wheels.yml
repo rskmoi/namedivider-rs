@@ -15,16 +15,16 @@ jobs:
           - os: ubuntu-latest
             platform: linux
           # Windows builds  
-          - os: windows-latest
-            platform: windows
+          # - os: windows-latest
+            # platform: windows
           # macOS Intel (x86_64) - requires macOS 13.0+ for OpenMP
-          - os: macos-13
-            platform: macos
-            macos_target: "13.0"
+          # - os: macos-13
+            # platform: macos
+            # macos_target: "13.0"
           # macOS Apple Silicon (arm64) - requires macOS 14.0+ for OpenMP
-          - os: macos-14
-            platform: macos
-            macos_target: "14.0"
+          # - os: macos-14
+            # platform: macos
+            # macos_target: "14.0"
 
     steps:
     - uses: actions/checkout@v4
@@ -112,6 +112,7 @@ jobs:
         export CIBW_BEFORE_ALL_LINUX='set -e; PM=""; for c in dnf microdnf yum; do if command -v "$c" >/dev/null 2>&1; then PM=$c; break; fi; done; if [ -n "$PM" ]; then $PM install -y llvm llvm-devel clang cmake; else URL16="https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz"; if curl -fsI "$URL16" >/dev/null; then mkdir -p /opt/clang; curl -fsSL "$URL16" | tar -xJ -C /opt/clang --strip-components=1; else echo "No package manager and tarball not reachable" >&2; exit 1; fi; fi; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then export LIBCLANG_PATH=$(llvm-config --libdir); else export LIBCLANG_PATH=/opt/clang/lib; fi; pip install maturin'
+        export CIBW_BEFORE_BUILD_LINUX='if command -v llvm-config >/dev/null 2>&1; then export LIBCLANG_PATH=$(llvm-config --libdir); else export LIBCLANG_PATH=/opt/clang/lib; fi; pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
         
         # Build musllinux (cp39–cp313) using musllinux_1_2
