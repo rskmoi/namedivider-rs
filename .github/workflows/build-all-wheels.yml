@@ -101,6 +101,7 @@ jobs:
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
         export CIBW_SKIP="*-musllinux* cp31?t-*"
+        export CIBW_BEFORE_BUILD='pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
         # Build manylinux (cp314 only) on manylinux_2_28 using system LLVM/Clang
@@ -121,6 +122,7 @@ jobs:
         export CIBW_SKIP="*-manylinux* cp31?t-*"
         # Original environment: use system libclang path on musllinux
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
+        export CIBW_BEFORE_BUILD='pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
         # Build musllinux (cp314 only) on musllinux_1_2 using system LLVM/Clang
@@ -133,7 +135,7 @@ jobs:
         export CIBW_BEFORE_BUILD='export LIBCLANG_PATH=$(llvm-config --libdir); pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
-        # Platform-specific configurations
+        # Platform-specific configurations for Linux builds
         CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
         CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
@@ -148,10 +150,31 @@ jobs:
             yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
             ln -sf /usr/bin/cmake3 /usr/bin/cmake
           fi
-          
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
+
+    - name: Build wheels (Windows/macOS)
+      if: runner.os != 'Linux'
+      uses: pypa/cibuildwheel@v3.2.1
+      with:
+        package-dir: python
+        output-dir: wheelhouse
+      env:
+        # Build all Python versions 3.9-3.14 (64-bit only)
+        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+        
+        # macOS deployment target based on matrix (Intel: 13.0, Apple Silicon: 14.0)
+        CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
+        
+        # Windows-specific setup
+        CIBW_BEFORE_ALL_WINDOWS: >
+          echo "=== Installing build dependencies ===" &&
+          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
+          echo "=== Installing LLVM/Clang 19+ ===" &&
+          choco install llvm --version=19.1.5 --force &&
+          echo "=== Installing Rust ===" &&
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
@@ -178,7 +201,6 @@ jobs:
         CIBW_BEFORE_BUILD_WINDOWS: >
           powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
           pip install maturin
-        
         
         # macOS Intel (x86_64) environment
         CIBW_ENVIRONMENT_MACOS_X86_64: >
