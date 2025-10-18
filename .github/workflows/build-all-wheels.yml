@@ -99,7 +99,8 @@ jobs:
         # Build manylinux (cp39–cp313) using manylinux2014
         echo "=== Building manylinux wheels (cp39–cp313 on manylinux2014) ==="
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64" LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:$LD_LIBRARY_PATH"'
+        export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else for fallback in /opt/rh/llvm-toolset-7/root/usr/lib64 /usr/lib64; do if [ -d "$fallback" ]; then LIBDIR=$fallback; break; fi; done; fi; if [ -z "$LIBDIR" ]; then echo "Failed to locate libclang directory" >&2; exit 1; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
         export CIBW_SKIP="*-musllinux* cp31?t-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
@@ -124,8 +125,8 @@ jobs:
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64"
         export CIBW_SKIP="*-manylinux* cp31?t-*"
         # Original environment: use system libclang path on musllinux
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
-        export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then export LIBCLANG_PATH=$(llvm-config --libdir); else export LIBCLANG_PATH=/opt/rh/llvm-toolset-7/root/usr/lib64; fi; pip install maturin'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib" LD_LIBRARY_PATH="/usr/lib/llvm20/lib:$LD_LIBRARY_PATH"'
+        export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else for fallback in /usr/lib/llvm20/lib /usr/lib64; do if [ -d "$fallback" ]; then LIBDIR=$fallback; break; fi; done; fi; if [ -z "$LIBDIR" ]; then echo "Failed to locate libclang directory" >&2; exit 1; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
         # Build musllinux (cp314 only) on musllinux_1_2 using system LLVM/Clang
