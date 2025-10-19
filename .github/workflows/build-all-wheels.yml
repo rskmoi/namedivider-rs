@@ -90,76 +90,26 @@ jobs:
         FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
         FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
 
-    - name: Build wheels (Linux - using proven pattern)
+    # NOTE: Original manylinux + musllinux matrix is temporarily commented out while debugging musllinux-only failures.
+    #       Restore the previous block (see git history) once musllinux passes and cross-platform coverage is needed again.
+    - name: Build wheels (Linux - musllinux focus)
       if: runner.os == 'Linux'
       run: |
-        # Install cibuildwheel
+        set -euxo pipefail
+        python -m pip install --upgrade pip
         python -m pip install cibuildwheel
-        
-        # Build manylinux (cp39–cp313) using manylinux2014
-        echo "=== Building manylinux wheels (cp39–cp313 on manylinux2014) ==="
-        export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64" LD_LIBRARY_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64:$LD_LIBRARY_PATH"'
-        export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else for fallback in /opt/rh/llvm-toolset-7/root/usr/lib64 /usr/lib64; do if [ -d "$fallback" ]; then LIBDIR=$fallback; break; fi; done; fi; if [ -z "$LIBDIR" ]; then echo "Failed to locate libclang directory" >&2; exit 1; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
-        export CIBW_SKIP="*-musllinux* cp31?t-*"
-        python -m cibuildwheel python/ --output-dir wheelhouse/
 
-        # Build manylinux (cp314 only) on manylinux_2_28 using system LLVM/Clang
-        echo "=== Building manylinux wheels (cp314 on manylinux_2_28) ==="
-        unset CIBW_ENVIRONMENT
-        export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
-        export CIBW_BUILD="cp314-manylinux_x86_64"
-        export CIBW_SKIP="*-musllinux* cp31?t-*"
-        export CIBW_BEFORE_ALL_LINUX='set -e; PM=""; for c in dnf microdnf yum; do if command -v "$c" >/dev/null 2>&1; then PM=$c; break; fi; done; if [ -n "$PM" ]; then $PM install -y llvm llvm-devel clang cmake; else URL16="https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz"; if curl -fsI "$URL16" >/dev/null; then mkdir -p /opt/clang; curl -fsSL "$URL16" | tar -xJ -C /opt/clang --strip-components=1; else echo "No package manager and tarball not reachable" >&2; exit 1; fi; fi; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
+        export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
+        export CIBW_SKIP="pp* *-win32 *_i686 *-manylinux* cp31?t-*"
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
-        OLD_CIBW_ENVIRONMENT_LINUX="$CIBW_ENVIRONMENT_LINUX"
-        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib64" LD_LIBRARY_PATH="/usr/lib64:$LD_LIBRARY_PATH"'
-        export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else LIBDIR=/opt/clang/lib; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
-        export CIBW_BEFORE_BUILD_LINUX='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else LIBDIR=/opt/clang/lib; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
-        python -m cibuildwheel python/ --output-dir wheelhouse/
-        export CIBW_ENVIRONMENT_LINUX="$OLD_CIBW_ENVIRONMENT_LINUX"
-        
-        # Build musllinux (cp39–cp313) using musllinux_1_2
-        echo "=== Building musllinux wheels (cp39–cp313 on musllinux_1_2) ==="
-        unset CIBW_ENVIRONMENT
-        export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64"
-        export CIBW_SKIP="*-manylinux* cp31?t-*"
-        # Original environment: use system libclang path on musllinux
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib" LD_LIBRARY_PATH="/usr/lib/llvm20/lib:$LD_LIBRARY_PATH"'
-        export CIBW_BEFORE_BUILD='if command -v llvm-config >/dev/null 2>&1; then LIBDIR=$(llvm-config --libdir); else for fallback in /usr/lib/llvm20/lib /usr/lib64; do if [ -d "$fallback" ]; then LIBDIR=$fallback; break; fi; done; fi; if [ -z "$LIBDIR" ]; then echo "Failed to locate libclang directory" >&2; exit 1; fi; export LIBCLANG_PATH="$LIBDIR"; if [ -d "$LIBCLANG_PATH" ] && ! ls "$LIBCLANG_PATH"/libclang.so* >/dev/null 2>&1; then ALT=$(ls "$LIBCLANG_PATH"/libclang-cpp.so* 2>/dev/null | head -n1); if [ -n "$ALT" ]; then ln -sf "$ALT" "$LIBCLANG_PATH/libclang.so"; fi; fi; export LD_LIBRARY_PATH="$LIBCLANG_PATH:$LD_LIBRARY_PATH"; env | grep -E "LIBCLANG|llvm" || true; if [ -d "$LIBCLANG_PATH" ]; then ls -l "$LIBCLANG_PATH" || true; fi; pip install maturin'
-        python -m cibuildwheel python/ --output-dir wheelhouse/
+        export CIBW_ENVIRONMENT_PASS_LINUX="LIBCLANG_PATH LD_LIBRARY_PATH"
+        export CIBW_BEFORE_ALL_LINUX='set -eux; apk add --no-cache clang clang-dev llvm-dev cmake build-base; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source "$HOME/.cargo/env"; LIBDIR=$(llvm-config --libdir); echo "LIBCLANG_PATH=$LIBDIR" >> $GITHUB_ENV; echo "LD_LIBRARY_PATH=$LIBDIR:$LD_LIBRARY_PATH" >> $GITHUB_ENV; echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV'
+        export CIBW_BEFORE_BUILD='pip install maturin'
 
-        # Build musllinux (cp314 only) on musllinux_1_2 using system LLVM/Clang
-        echo "=== Building musllinux wheels (cp314 on musllinux_1_2) ==="
-        unset CIBW_ENVIRONMENT
-        export CIBW_BUILD="cp314-musllinux_x86_64"
-        export CIBW_SKIP="*-manylinux* cp31?t-*"
-        export CIBW_BEFORE_ALL_LINUX='set -e; apk add --no-cache clang-dev llvm-dev cmake build-base; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source $HOME/.cargo/env'
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
-        export CIBW_BEFORE_BUILD='export LIBCLANG_PATH=$(llvm-config --libdir); pip install maturin'
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
-        # Platform-specific configurations for Linux builds
-        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
-        CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
         CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
-        CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
-        CIBW_BEFORE_ALL_LINUX: |
-          echo "=== Installing build dependencies ==="
-          if command -v apk >/dev/null 2>&1; then
-            echo "Detected: musllinux (Alpine)"
-            apk add --no-cache cmake clang-dev llvm-dev build-base
-          else
-            echo "Detected: manylinux"
-            yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
-            ln -sf /usr/bin/cmake3 /usr/bin/cmake
-          fi
-          echo "=== Installing Rust ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
-          source $HOME/.cargo/env
-        CIBW_BEFORE_BUILD: "pip install maturin"
-
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
       uses: pypa/cibuildwheel@v3.2.1
