@@ -106,7 +106,7 @@ jobs:
 
         echo "=== Building manylinux wheels (cp314) ==="
         export CIBW_BUILD="cp314-manylinux_x86_64"
-        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib"'
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib64"'
         export CIBW_SKIP="*-win32 *_i686 *-musllinux*"
         export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
         python -m cibuildwheel python/ --output-dir wheelhouse/
