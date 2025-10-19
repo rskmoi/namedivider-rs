@@ -97,7 +97,21 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install cibuildwheel
 
+        maybe_set_clang() {
+          if [ -d /opt/clang/lib ]; then
+            export PATH=/opt/clang/bin:$PATH
+            export LIBCLANG_PATH=/opt/clang/lib
+          elif [ -d /opt/rh/llvm-toolset-7/root/usr/lib64 ]; then
+            export LIBCLANG_PATH=/opt/rh/llvm-toolset-7/root/usr/lib64
+          elif [ -d /usr/lib/llvm20/lib ]; then
+            export LIBCLANG_PATH=/usr/lib/llvm20/lib
+          else
+            export LIBCLANG_PATH=/usr/lib64
+          fi
+        }
+
         echo "=== Building manylinux wheels (cp39–cp313) ==="
+        maybe_set_clang
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
         export CIBW_SKIP="pp* *-win32 *_i686 *-musllinux* cp314-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
@@ -105,22 +119,27 @@ jobs:
         unset CIBW_SKIP
 
         echo "=== Building manylinux wheels (cp314) ==="
+        if command -v llvm-config >/dev/null 2>&1; then
+          export LIBCLANG_PATH=$(llvm-config --libdir)
+        else
+          maybe_set_clang
+        fi
         export CIBW_BUILD="cp314-manylinux_x86_64"
         export CIBW_SKIP="pp* *-win32 *_i686 *-musllinux*"
         export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
-        export CIBW_ENVIRONMENT='PATH="/opt/clang/bin:$HOME/.cargo/bin:$PATH"'
         python -m cibuildwheel python/ --output-dir wheelhouse/
         unset CIBW_BUILD
         unset CIBW_SKIP
         unset CIBW_MANYLINUX_X86_64_IMAGE
-        unset CIBW_ENVIRONMENT
 
         echo "=== Building musllinux wheels (cp39–cp314) ==="
+        export LIBCLANG_PATH=/usr/lib/llvm20/lib
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
         export CIBW_SKIP="pp* *-win32 *_i686 *-manylinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
         unset CIBW_BUILD
         unset CIBW_SKIP
+        unset LIBCLANG_PATH
       env:
         CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
         CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
@@ -128,7 +147,6 @@ jobs:
         CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
         CIBW_ENVIRONMENT_LINUX: 'PATH="/opt/clang/bin:$HOME/.cargo/bin:$PATH"'
         CIBW_BEFORE_ALL_LINUX: |
-          set -eux
           echo "=== Installing build dependencies ==="
           if command -v apk >/dev/null 2>&1; then
             echo "Detected: musllinux (Alpine)"
@@ -138,8 +156,9 @@ jobs:
               echo "CentOS 7 detected; downloading LLVM toolchain tarball"
               yum install -y cmake3 curl tar xz gcc gcc-c++
               mkdir -p /opt/clang
-              curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJ --strip-components=1 -C /opt/clang
-              export PATH=/opt/clang/bin:$PATH
+              if [ ! -f /opt/clang/lib/libclang.so ]; then
+                curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJ --strip-components=1 -C /opt/clang
+              fi
             else
               yum install -y cmake clang clang-devel llvm-devel
             fi
@@ -147,20 +166,6 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
         CIBW_BEFORE_BUILD: |
-          set -eux
-          if command -v llvm-config >/dev/null 2>&1; then
-            LIBDIR=$(llvm-config --libdir)
-          elif [ -d /opt/clang/lib ]; then
-            LIBDIR=/opt/clang/lib
-          elif [ -d /opt/rh/llvm-toolset-7/root/usr/lib64 ]; then
-            LIBDIR=/opt/rh/llvm-toolset-7/root/usr/lib64
-          elif [ -d /usr/lib/llvm20/lib ]; then
-            LIBDIR=/usr/lib/llvm20/lib
-          else
-            LIBDIR=/usr/lib64
-          fi
-          export LIBCLANG_PATH="$LIBDIR"
-          export LD_LIBRARY_PATH="$LIBDIR:$LD_LIBRARY_PATH"
           pip install maturin
 
     - name: Build wheels (Windows/macOS)
