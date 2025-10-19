@@ -14,17 +14,17 @@ jobs:
           # Linux builds
           - os: ubuntu-latest
             platform: linux
-#          # Windows builds
-#          - os: windows-latest
-#            platform: windows
-#          # macOS Intel (x86_64) - requires macOS 13.0+ for OpenMP
-#          - os: macos-13
-#            platform: macos
-#            macos_target: "13.0"
-#          # macOS Apple Silicon (arm64) - requires macOS 14.0+ for OpenMP
-#          - os: macos-14
-#            platform: macos
-#            macos_target: "14.0"
+          # Windows builds
+          - os: windows-latest
+            platform: windows
+          # macOS Intel (x86_64) - requires macOS 13.0+ for OpenMP
+          - os: macos-13
+            platform: macos
+            macos_target: "13.0"
+          # macOS Apple Silicon (arm64) - requires macOS 14.0+ for OpenMP
+          - os: macos-14
+            platform: macos
+            macos_target: "14.0"
 
     steps:
     - uses: actions/checkout@v4
@@ -101,8 +101,6 @@ jobs:
         export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
         export CIBW_SKIP="*-win32 *_i686 *-musllinux* cp314-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
-        unset CIBW_BUILD
-        unset CIBW_SKIP
 
         echo "=== Building manylinux wheels (cp314) ==="
         export CIBW_BUILD="cp314-manylinux_x86_64"
@@ -110,17 +108,12 @@ jobs:
         export CIBW_SKIP="*-win32 *_i686 *-musllinux*"
         export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
         python -m cibuildwheel python/ --output-dir wheelhouse/
-        unset CIBW_BUILD
-        unset CIBW_SKIP
-        unset CIBW_MANYLINUX_X86_64_IMAGE
 
         echo "=== Building musllinux wheels (cp39–cp314) ==="
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
         export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib"'
         export CIBW_SKIP="*-win32 *_i686 *-manylinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
-        unset CIBW_BUILD
-        unset CIBW_SKIP
       env:
         CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
         CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
