@@ -139,8 +139,7 @@ jobs:
               yum install -y cmake3 curl tar xz gcc gcc-c++
               mkdir -p /opt/clang
               curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJ --strip-components=1 -C /opt/clang
-              echo "LLVM_FALLBACK_PREFIX=/opt/clang" >> $GITHUB_ENV
-              echo "PATH=/opt/clang/bin:$PATH" >> $GITHUB_ENV
+              export PATH=/opt/clang/bin:$PATH
             else
               yum install -y cmake clang clang-devel llvm-devel
             fi
@@ -151,8 +150,8 @@ jobs:
           set -eux
           if command -v llvm-config >/dev/null 2>&1; then
             LIBDIR=$(llvm-config --libdir)
-          elif [ -n "${LLVM_FALLBACK_PREFIX:-}" ]; then
-            LIBDIR=${LLVM_FALLBACK_PREFIX}/lib
+          elif [ -d /opt/clang/lib ]; then
+            LIBDIR=/opt/clang/lib
           elif [ -d /opt/rh/llvm-toolset-7/root/usr/lib64 ]; then
             LIBDIR=/opt/rh/llvm-toolset-7/root/usr/lib64
           elif [ -d /usr/lib/llvm20/lib ]; then
