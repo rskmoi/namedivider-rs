@@ -99,17 +99,17 @@ jobs:
 
         echo "=== Building manylinux wheels (cp39–cp313) ==="
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
-        export CIBW_SKIP="pp* *-win32 *_i686 *-musllinux* cp314-*"
         export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_SKIP="pp* *-win32 *_i686 *-musllinux* cp314-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
         unset CIBW_BUILD
         unset CIBW_SKIP
 
         echo "=== Building manylinux wheels (cp314) ==="
         export CIBW_BUILD="cp314-manylinux_x86_64"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib"'
         export CIBW_SKIP="pp* *-win32 *_i686 *-musllinux*"
         export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
-        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib"'
         python -m cibuildwheel python/ --output-dir wheelhouse/
         unset CIBW_BUILD
         unset CIBW_SKIP
@@ -117,8 +117,8 @@ jobs:
 
         echo "=== Building musllinux wheels (cp39–cp314) ==="
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
-        export CIBW_SKIP="pp* *-win32 *_i686 *-manylinux*"
         export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib"'
+        export CIBW_SKIP="pp* *-win32 *_i686 *-manylinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
         unset CIBW_BUILD
         unset CIBW_SKIP
@@ -128,26 +128,31 @@ jobs:
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
         CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
         CIBW_BEFORE_ALL_LINUX: |
+          set -euxo pipefail
           echo "=== Installing build dependencies ==="
           if command -v apk >/dev/null 2>&1; then
+            # musllinux (Alpine)
             echo "Detected: musllinux (Alpine)"
-            apk add --no-cache cmake clang clang-dev llvm-dev build-base
+            apk add --no-cache cmake clang-dev llvm-dev build-base
+          elif [ -f /etc/centos-release ] && grep -q 'release 7' /etc/centos-release; then
+            # manylinux2014 (CentOS7)
+            echo "Detected: manylinux2014 (CentOS7)"
+            yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
+            ln -sf /usr/bin/cmake3 /usr/bin/cmake
           else
-            if grep -q 'release 7' /etc/redhat-release 2>/dev/null; then
-              echo "CentOS 7 detected; downloading LLVM toolchain tarball"
-              yum install -y cmake3 curl tar xz gcc gcc-c++
-              mkdir -p /opt/clang
-              if [ ! -f /opt/clang/lib/libclang.so ]; then
-                curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/clang+llvm-16.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJ --strip-components=1 -C /opt/clang
-              fi
+            # manylinux_2_28
+            echo "Detected: manylinux_2_28 family"
+            if command -v microdnf >/dev/null 2>&1; then
+              microdnf install -y cmake clang clang-devel llvm-devel gcc gcc-c++
             else
-              yum install -y cmake clang clang-devel llvm-devel
+              dnf install -y cmake clang clang-devel llvm-devel gcc gcc-c++
             fi
           fi
+
+          echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
-        CIBW_BEFORE_BUILD: |
-          pip install maturin
+        CIBW_BEFORE_BUILD: "pip install maturin"
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
