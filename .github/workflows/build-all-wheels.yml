@@ -101,9 +101,8 @@ jobs:
 
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
         export CIBW_SKIP="pp* *-win32 *_i686 *-manylinux* cp31?t-*"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
-        export CIBW_ENVIRONMENT_FILE=/tmp/cibw_env_musllinux
-        export CIBW_BEFORE_ALL_LINUX='set -eux; : > "$CIBW_ENVIRONMENT_FILE"; apk add --no-cache clang clang-dev llvm-dev cmake build-base; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source "$HOME/.cargo/env"; LIBDIR=$(llvm-config --libdir); echo "LIBCLANG_PATH=$LIBDIR" >> "$CIBW_ENVIRONMENT_FILE"; echo "LD_LIBRARY_PATH=$LIBDIR:$LD_LIBRARY_PATH" >> "$CIBW_ENVIRONMENT_FILE"; echo "PATH=$HOME/.cargo/bin:$PATH" >> "$CIBW_ENVIRONMENT_FILE"'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib" LD_LIBRARY_PATH="/usr/lib/llvm20/lib:$LD_LIBRARY_PATH"'
+        export CIBW_BEFORE_ALL_LINUX='set -eux; apk add --no-cache clang clang-dev llvm-dev cmake build-base; curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y; source "$HOME/.cargo/env"'
         export CIBW_BEFORE_BUILD='pip install maturin'
 
         python -m cibuildwheel python/ --output-dir wheelhouse/
