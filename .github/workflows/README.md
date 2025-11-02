@@ -36,10 +36,10 @@
 **目的**: 全30環境でのPythonホイール作成
 
 **対象環境**:
-- **Linux**: manylinux + musllinux（各5ホイール）
-- **Windows**: Python 3.9-3.13（5ホイール）  
-- **macOS Intel**: Python 3.9-3.13（5ホイール）
-- **macOS Apple Silicon**: Python 3.9-3.13（5ホイール）
+- **Linux**: manylinux + musllinux（各6ホイール）
+- **Windows**: Python 3.9-3.14（6ホイール）  
+- **macOS Intel**: Python 3.9-3.14（6ホイール）
+- **macOS Apple Silicon**: Python 3.9-3.14（6ホイール）
 - **合計**: 30ホイール
 
 **使用タイミング**:
@@ -85,8 +85,8 @@
 
 ### 定期的な見直し項目
 - Rustバージョン（現在: 1.75.0）
-- Pythonバージョン範囲（現在: 3.9-3.13）
-- cibuildwheelバージョン（現在: v2.20.0）
+- Pythonバージョン範囲（現在: 3.9-3.14）
+- cibuildwheelバージョン（現在: v3.2.1）
 - コンテナイメージ（manylinux2014, musllinux_1_2）
 
 ### 新しいプラットフォーム追加時

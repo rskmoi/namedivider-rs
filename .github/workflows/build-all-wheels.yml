@@ -14,7 +14,7 @@ jobs:
           # Linux builds
           - os: ubuntu-latest
             platform: linux
-          # Windows builds  
+          # Windows builds
           - os: windows-latest
             platform: windows
           # macOS Intel (x86_64) - requires macOS 13.0+ for OpenMP
@@ -22,7 +22,7 @@ jobs:
             platform: macos
             macos_target: "13.0"
           # macOS Apple Silicon (arm64) - requires macOS 14.0+ for OpenMP
-          - os: macos-latest
+          - os: macos-14
             platform: macos
             macos_target: "14.0"
 
@@ -90,28 +90,31 @@ jobs:
         FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
         FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
 
-    - name: Build wheels (Linux - using proven pattern)
+    - name: Build wheels (Linux)
       if: runner.os == 'Linux'
       run: |
-        # Install cibuildwheel
+        python -m pip install --upgrade pip
         python -m pip install cibuildwheel
-        
-        # Build manylinux first
-        echo "=== Building manylinux wheels ==="
+
+        echo "=== Building manylinux wheels (cp39–cp313) ==="
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
-        export CIBW_SKIP="*-musllinux*"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_SKIP="*-win32 *_i686 *-musllinux* cp314-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
-        
-        # Build musllinux separately
-        echo "=== Building musllinux wheels ==="
-        unset CIBW_ENVIRONMENT
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"'
-        export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64"
-        export CIBW_SKIP="*-manylinux*"
+
+        echo "=== Building manylinux wheels (cp314) ==="
+        export CIBW_BUILD="cp314-manylinux_x86_64"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib64"'
+        export CIBW_SKIP="*-win32 *_i686 *-musllinux*"
+        export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
+        python -m cibuildwheel python/ --output-dir wheelhouse/
+
+        echo "=== Building musllinux wheels (cp39–cp314) ==="
+        export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib"'
+        export CIBW_SKIP="*-win32 *_i686 *-manylinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
-        # Platform-specific configurations
         CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
         CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
@@ -119,14 +122,24 @@ jobs:
         CIBW_BEFORE_ALL_LINUX: |
           echo "=== Installing build dependencies ==="
           if command -v apk >/dev/null 2>&1; then
+            # musllinux (Alpine)
             echo "Detected: musllinux (Alpine)"
             apk add --no-cache cmake clang-dev llvm-dev build-base
-          else
-            echo "Detected: manylinux"
+          elif [ -f /etc/centos-release ] && grep -q 'release 7' /etc/centos-release; then
+            # manylinux2014 (CentOS7)
+            echo "Detected: manylinux2014 (CentOS7)"
             yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
             ln -sf /usr/bin/cmake3 /usr/bin/cmake
+          else
+            # manylinux_2_28
+            echo "Detected: manylinux_2_28 family"
+            if command -v microdnf >/dev/null 2>&1; then
+              microdnf install -y cmake clang clang-devel llvm-devel gcc gcc-c++
+            else
+              dnf install -y cmake clang clang-devel llvm-devel gcc gcc-c++
+            fi
           fi
-          
+
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
@@ -134,13 +147,13 @@ jobs:
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v2.20.0
+      uses: pypa/cibuildwheel@v3.2.1
       with:
         package-dir: python
         output-dir: wheelhouse
       env:
-        # Build all Python versions 3.9-3.13 (64-bit only)
-        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+        # Build all Python versions 3.9-3.14 (64-bit only)
+        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
         
         # macOS deployment target based on matrix (Intel: 13.0, Apple Silicon: 14.0)
         CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
@@ -180,7 +193,6 @@ jobs:
           powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
           pip install maturin
         
-        
         # macOS Intel (x86_64) environment
         CIBW_ENVIRONMENT_MACOS_X86_64: >
           LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
@@ -208,8 +220,8 @@ jobs:
         CIBW_TEST_COMMAND_MACOS: >
           python -c "import namedivider_core; print('Module imported successfully'); basic = namedivider_core.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_core.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
         
-        # Skip PyPy builds and 32-bit architectures
-        CIBW_SKIP: "pp* *-win32 *_i686"
+        # Skip PyPy builds, 32-bit, and free-threaded (t) variants for now
+        CIBW_SKIP: "pp* *-win32 *_i686 cp31?t-*"
 
     - name: Upload wheels
       uses: actions/upload-artifact@v4
@@ -240,7 +252,7 @@ jobs:
         # Count total wheels
         total_wheels=$(find dist/ -name "*.whl" -type f | wc -l)
         echo "Total wheels built: $total_wheels"
-        echo "Expected: 30 wheels (5 Python versions × 6 platforms: Linux×2 + Windows + macOS×2)"
+        echo "Expected: 30 wheels (6 Python versions × 5 platforms: Linux×2 + Windows + macOS×2)"
         
         # List wheels by platform
         echo ""
@@ -266,7 +278,7 @@ jobs:
         # Verify Python versions
         echo ""
         echo "=== Wheels by Python Version ==="
-        for py_ver in cp39 cp310 cp311 cp312 cp313; do
+        for py_ver in cp39 cp310 cp311 cp312 cp313 cp314; do
           count=$(find dist/ -name "*${py_ver}*" -type f | wc -l)
           echo "Python ${py_ver#cp}: $count wheels"
         done

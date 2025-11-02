@@ -49,7 +49,7 @@ impl PyDividedName {
     }
 
     fn to_dict(&self, py: Python<'_>) -> PyResult<Py<PyDict>> {
-        let dict = PyDict::new_bound(py);
+        let dict = PyDict::new(py);
         dict.set_item("family", &self.family)?;
         dict.set_item("given", &self.given)?;
         dict.set_item("separator", &self.separator)?;
@@ -163,7 +163,7 @@ impl PyGBDTNameDivider {
 
 #[pymodule]
 fn namedivider_core(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    pyo3::prepare_freethreaded_python();
+    Python::initialize();
     
     m.add_class::<PyDividedName>()?;
     m.add_class::<PyBasicNameDivider>()?;
