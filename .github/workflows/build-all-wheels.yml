@@ -17,11 +17,11 @@ jobs:
           # Windows builds
           - os: windows-latest
             platform: windows
-          # macOS Intel (x86_64) - requires macOS 13.0+ for OpenMP
+          # macOS Intel (x86_64)
           - os: macos-13
             platform: macos
             macos_target: "13.0"
-          # macOS Apple Silicon (arm64) - requires macOS 14.0+ for OpenMP
+          # macOS Apple Silicon (arm64)
           - os: macos-14
             platform: macos
             macos_target: "14.0"
@@ -98,20 +98,20 @@ jobs:
 
         echo "=== Building manylinux wheels (cp39–cp313) ==="
         export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
-        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-win32 *_i686 *-musllinux* cp314-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
         echo "=== Building manylinux wheels (cp314) ==="
         export CIBW_BUILD="cp314-manylinux_x86_64"
-        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib64"'
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-win32 *_i686 *-musllinux*"
         export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
         echo "=== Building musllinux wheels (cp39–cp314) ==="
         export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
-        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH" LIBCLANG_PATH="/usr/lib/llvm20/lib"'
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-win32 *_i686 *-manylinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
@@ -120,26 +120,6 @@ jobs:
         CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
         CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
         CIBW_BEFORE_ALL_LINUX: |
-          echo "=== Installing build dependencies ==="
-          if command -v apk >/dev/null 2>&1; then
-            # musllinux (Alpine)
-            echo "Detected: musllinux (Alpine)"
-            apk add --no-cache cmake clang-dev llvm-dev build-base
-          elif [ -f /etc/centos-release ] && grep -q 'release 7' /etc/centos-release; then
-            # manylinux2014 (CentOS7)
-            echo "Detected: manylinux2014 (CentOS7)"
-            yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
-            ln -sf /usr/bin/cmake3 /usr/bin/cmake
-          else
-            # manylinux_2_28
-            echo "Detected: manylinux_2_28 family"
-            if command -v microdnf >/dev/null 2>&1; then
-              microdnf install -y cmake clang clang-devel llvm-devel gcc gcc-c++
-            else
-              dnf install -y cmake clang clang-devel llvm-devel gcc gcc-c++
-            fi
-          fi
-
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
@@ -160,23 +140,11 @@ jobs:
         
         # Windows-specific setup
         CIBW_BEFORE_ALL_WINDOWS: >
-          echo "=== Installing build dependencies ===" &&
-          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
-          echo "=== Installing LLVM/Clang 19+ ===" &&
-          choco install llvm --version=19.1.5 --force &&
           echo "=== Installing Rust ===" &&
           curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
-          echo "=== Installing build dependencies ===" &&
-          if ! command -v cmake &> /dev/null; then
-            brew install cmake
-          fi &&
-          echo "Installing OpenMP (libomp) for LightGBM..." &&
-          brew install libomp &&
-          LIBOMP_PREFIX=$(brew --prefix libomp) &&
-          echo "OpenMP installed at: $LIBOMP_PREFIX" &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
@@ -185,8 +153,7 @@ jobs:
           PYTHONUTF8=1
           PYTHONIOENCODING=utf-8
           RUST_BACKTRACE=1
-          PATH="$USERPROFILE\\.cargo\\bin;C:\\Program Files\\LLVM\\bin;$PATH"
-          BINDGEN_CLANG_PATH="C:\\Program Files\\LLVM\\bin\\clang.exe"
+          PATH="$USERPROFILE\\.cargo\\bin;$PATH"
         
         # Windows-specific GBDT file fix in build step
         CIBW_BEFORE_BUILD_WINDOWS: >
@@ -195,21 +162,11 @@ jobs:
         
         # macOS Intel (x86_64) environment
         CIBW_ENVIRONMENT_MACOS_X86_64: >
-          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
-          CPATH="$(brew --prefix libomp)/include:$CPATH"
-          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
-          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
-          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
           MACOSX_DEPLOYMENT_TARGET="13.0"
           PATH="$HOME/.cargo/bin:$PATH"
         
         # macOS Apple Silicon (arm64) environment
         CIBW_ENVIRONMENT_MACOS_ARM64: >
-          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
-          CPATH="$(brew --prefix libomp)/include:$CPATH"
-          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
-          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
-          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
           MACOSX_DEPLOYMENT_TARGET="14.0"
           PATH="$HOME/.cargo/bin:$PATH"
         

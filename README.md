@@ -6,9 +6,9 @@
 
 [python実装](https://github.com/rskmoi/namedivider-python/blob/master/README.md)より最大200倍ほど高速化しています。
 
-cliで名前1つを分割するときBasicNameDividerで3ms,GBDTNameDividerで15ms程度です。 
+cliで名前1つを分割するときBasicNameDividerで3ms,GBDTNameDividerで15ms程度です。
 
-lightgbmのモデルをPythonからRustに移植した結果、完璧に同じ結果を再現できず若干こちらのほうが精度が低いです。
+GBDTNameDividerはLightGBM text modelを純Rust evaluatorで推論します。LightGBMのnativeライブラリやRust bindingには依存していません。
 
 こちらの実装はスーパーアルファ版で、後方互換性・保守性など全く考えていません。
 

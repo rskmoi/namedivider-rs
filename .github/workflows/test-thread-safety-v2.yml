@@ -17,7 +17,7 @@ jobs:
           # Windows builds (Python 3.13)
           - os: windows-latest
             platform: windows
-          # macOS Intel (x86_64) - 最も問題が発生しやすい環境
+          # macOS Intel (x86_64)
           - os: macos-13
             platform: macos
             macos_target: "13.0"
@@ -99,17 +99,12 @@ jobs:
         # Build manylinux only (Python 3.13)
         echo "=== Building manylinux wheels ==="
         export CIBW_BUILD="cp313-manylinux_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-musllinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
         CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
         CIBW_BEFORE_ALL_LINUX: |
-          echo "=== Installing build dependencies ==="
-          echo "Detected: manylinux"
-          yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
-          ln -sf /usr/bin/cmake3 /usr/bin/cmake
-          
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env
@@ -133,23 +128,11 @@ jobs:
         
         # Windows-specific setup
         CIBW_BEFORE_ALL_WINDOWS: >
-          echo "=== Installing build dependencies ===" &&
-          choco install cmake --installargs "ADD_CMAKE_TO_PATH=System" &&
-          echo "=== Installing LLVM/Clang 19+ ===" &&
-          choco install llvm --version=19.1.5 --force &&
           echo "=== Installing Rust ===" &&
           curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
-          echo "=== Installing build dependencies ===" &&
-          if ! command -v cmake &> /dev/null; then
-            brew install cmake
-          fi &&
-          echo "Installing OpenMP (libomp) for LightGBM..." &&
-          brew install libomp &&
-          LIBOMP_PREFIX=$(brew --prefix libomp) &&
-          echo "OpenMP installed at: $LIBOMP_PREFIX" &&
           echo "=== Installing Rust ===" &&
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
           source $HOME/.cargo/env
@@ -158,8 +141,7 @@ jobs:
           PYTHONUTF8=1
           PYTHONIOENCODING=utf-8
           RUST_BACKTRACE=1
-          PATH="$USERPROFILE\\.cargo\\bin;C:\\Program Files\\LLVM\\bin;$PATH"
-          BINDGEN_CLANG_PATH="C:\\Program Files\\LLVM\\bin\\clang.exe"
+          PATH="$USERPROFILE\\.cargo\\bin;$PATH"
         
         # Windows-specific GBDT file fix in build step
         CIBW_BEFORE_BUILD_WINDOWS: >
@@ -168,21 +150,11 @@ jobs:
         
         # macOS Intel (x86_64) environment
         CIBW_ENVIRONMENT_MACOS_X86_64: >
-          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
-          CPATH="$(brew --prefix libomp)/include:$CPATH"
-          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
-          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
-          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
           MACOSX_DEPLOYMENT_TARGET="13.0"
           PATH="$HOME/.cargo/bin:$PATH"
         
         # macOS Apple Silicon (arm64) environment
         CIBW_ENVIRONMENT_MACOS_ARM64: >
-          LIBRARY_PATH="$(brew --prefix libomp)/lib:$LIBRARY_PATH"
-          CPATH="$(brew --prefix libomp)/include:$CPATH"
-          LDFLAGS="-L$(brew --prefix libomp)/lib $LDFLAGS"
-          CPPFLAGS="-I$(brew --prefix libomp)/include $CPPFLAGS"
-          RUSTFLAGS="-L $(brew --prefix libomp)/lib"
           MACOSX_DEPLOYMENT_TARGET="14.0"
           PATH="$HOME/.cargo/bin:$PATH"
         
@@ -201,5 +173,4 @@ jobs:
         echo "avoiding platform compatibility issues."
         echo ""
         echo "Expected behavior:"
-        echo "- macOS: Thread safety tests should fail due to LightGBM Booster issues"
-        echo "- Linux/Windows: Should generally pass with proper thread handling"
+        echo "- All platforms: Shared GBDTNameDivider should be thread-safe"

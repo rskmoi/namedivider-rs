@@ -2,9 +2,8 @@
 """
 PyO3 Thread Safety Test for namedivider-core
 
-このスクリプトは、macOSでGBDTNameDividerのスレッド安全性問題を再現します。
-LightGBMのBoosterオブジェクトがスレッド安全でないため、
-マルチスレッド環境でクラッシュが発生する可能性があります。
+このスクリプトは、GBDTNameDividerがマルチスレッド環境で
+安定して利用できることを確認します。
 """
 
 import concurrent.futures
@@ -49,7 +48,6 @@ def worker_shared_instance(divider, worker_id: int, iterations: int) -> List[str
             name_index = (worker_id * iterations + i) % len(TEST_NAMES)
             name = TEST_NAMES[name_index]
             
-            # ここでスレッド安全性の問題が発生する可能性
             result = divider.divide_name(name)
             
             results.append(f"Worker-{worker_id}-{i}: {name} -> {result.family}|{result.given}")
@@ -86,12 +84,11 @@ def worker_separate_instance(worker_id: int, iterations: int) -> List[str]:
     return results
 
 def test_shared_instance_multithreading():
-    """共有インスタンスでマルチスレッドテスト（クラッシュの可能性）"""
+    """共有インスタンスでマルチスレッドテスト"""
     try:
         import namedivider_core
         
         print("\n=== Shared Instance Multi-threading Test ===")
-        print("⚠️  This test may cause crashes on macOS due to thread safety issues")
         
         # 共有インスタンスを作成
         shared_divider = namedivider_core.GBDTNameDivider()
@@ -191,7 +188,7 @@ def main():
         print("\n🎉 All tests passed! No thread safety issues detected.")
         sys.exit(0)
     else:
-        print("\n⚠️  Some tests failed. Thread safety issues may exist.")
+        print("\n⚠️  Some tests failed.")
         sys.exit(1)
 
 if __name__ == "__main__":

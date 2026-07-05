@@ -118,7 +118,7 @@ jobs:
         echo "=== Validating Python and Rust versions ==="
         
         # Check Python versions (should be available)
-        python_versions=("3.9" "3.10" "3.11" "3.12" "3.13")
+        python_versions=("3.9" "3.10" "3.11" "3.12" "3.13" "3.14")
         echo "Target Python versions: ${python_versions[*]}"
         
         # Check Rust toolchain
@@ -162,28 +162,11 @@ jobs:
         
         # Test build matrix configuration
         echo "Build matrix validation:"
-        echo "- Python versions: 3.9, 3.10, 3.11, 3.12, 3.13"
-        echo "- Platforms: ubuntu-latest, windows-latest, macos-latest"
-        echo "- Total combinations: 5 × 4 = 20 wheels"
+        echo "- Python versions: 3.9, 3.10, 3.11, 3.12, 3.13, 3.14"
+        echo "- Platforms: Linux manylinux/musllinux, Windows, macOS Intel/Apple Silicon"
+        echo "- Total combinations: 6 × 5 = 30 wheels"
         
         echo "✅ cibuildwheel configuration validated"
-
-    - name: Test Linux libclang detection
-      if: runner.os == 'Linux'
-      run: |
-        echo "=== Testing Linux libclang detection ==="
-        
-        # Simulate manylinux detection
-        if command -v apk >/dev/null 2>&1; then
-          echo "Detected: musllinux (Alpine)"
-          LIBCLANG_PATH="/usr/lib/llvm20/lib/libclang.so.20.1.7"
-        else
-          echo "Detected: manylinux"
-          LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"
-        fi
-        
-        echo "LIBCLANG_PATH would be: $LIBCLANG_PATH"
-        echo "✅ Linux libclang detection logic validated"
 
     - name: Test Windows GBDT file handling
       if: runner.os == 'Windows'
@@ -232,6 +215,6 @@ jobs:
         echo "✅ Python/Rust versions: PASSED"  
         echo "✅ Dependency installation: PASSED"
         echo "✅ cibuildwheel configuration: PASSED"
-        echo "✅ Platform-specific configurations: PASSED"
+        echo "✅ Platform-specific file handling: PASSED"
         echo ""
         echo "🎉 All validations passed! Ready for build workflows."
