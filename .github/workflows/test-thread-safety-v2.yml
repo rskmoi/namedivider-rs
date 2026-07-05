@@ -18,13 +18,13 @@ jobs:
           - os: windows-latest
             platform: windows
           # macOS Intel (x86_64)
-          - os: macos-13
+          - os: macos-15-intel
             platform: macos
-            macos_target: "13.0"
+            macos_target: "10.13"
           # macOS Apple Silicon (arm64)
-          - os: macos-latest
+          - os: macos-14
             platform: macos
-            macos_target: "14.0"
+            macos_target: "11.0"
 
     steps:
     - uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
         # Build only Python 3.13 (64-bit only)
         CIBW_BUILD: "cp313-*"
         
-        # macOS deployment target based on matrix (Intel: 13.0, Apple Silicon: 14.0)
+        # macOS deployment target based on matrix (Intel: 10.13, Apple Silicon: 11.0)
         CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
         
         # Windows-specific setup
@@ -150,12 +150,12 @@ jobs:
         
         # macOS Intel (x86_64) environment
         CIBW_ENVIRONMENT_MACOS_X86_64: >
-          MACOSX_DEPLOYMENT_TARGET="13.0"
+          MACOSX_DEPLOYMENT_TARGET="10.13"
           PATH="$HOME/.cargo/bin:$PATH"
         
         # macOS Apple Silicon (arm64) environment
         CIBW_ENVIRONMENT_MACOS_ARM64: >
-          MACOSX_DEPLOYMENT_TARGET="14.0"
+          MACOSX_DEPLOYMENT_TARGET="11.0"
           PATH="$HOME/.cargo/bin:$PATH"
         
         # Skip PyPy builds and 32-bit architectures

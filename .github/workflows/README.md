@@ -73,7 +73,7 @@
 - **32bit除外**: `*-win32 *_i686` はスキップ
 
 ### macOS環境の特殊対応
-- **Deployment Target**: Intel Mac（13.0以降）、Apple Silicon（14.0以降）
+- **Deployment Target**: Intel Mac（10.13以降）、Apple Silicon（11.0以降）
 - **Rust**: cibuildwheel実行前に Rust 1.75.0 をインストール
 
 ## 🔧 保守・更新

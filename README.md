@@ -67,8 +67,8 @@ pprint(divided_name.to_dict())
 - **プラットフォーム**: 
   - Linux: manylinux2014, musllinux_1_2 (x86_64)
   - Windows: win_amd64
-  - macOS Intel: x86_64 (macOS 13.0以降)
-  - macOS Apple Silicon: arm64 (macOS 14.0以降)
+  - macOS Intel: x86_64 (macOS 10.13以降)
+  - macOS Apple Silicon: arm64 (macOS 11.0以降)
 - **総計**: 30種類のホイール環境をサポート
 
 詳細な技術情報については [ワークフローのドキュメント](.github/workflows/README.md) を参照してください。

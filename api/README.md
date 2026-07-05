@@ -8,8 +8,7 @@ https://hub.docker.com/r/rskmoi/namedivider-api
 
 - **0.1.0**: Python版(FastAPI)で、BasicNameDividerのみの提供
 - **0.2.0-beta**: Rust(actix-web)で実装、BasicNameDivider + GBDTNameDivider対応
-- **0.3.0**: Rust版が安定したと判断しlatestにする
-- **0.4.0**: GBDT推論を純Rust evaluatorへ移行し、LightGBM native依存を削除
+- **0.3.0**: Rust版が安定したと判断しlatestにする。GBDT推論を純Rust evaluatorへ移行し、LightGBM native依存を削除
 
 ## Installation
 
