@@ -21,11 +21,6 @@ jobs:
       with:
         toolchain: 1.75.0
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake
-
     - name: Reconstruct family_names.txt
       run: |
         mkdir -p secret
@@ -100,11 +95,8 @@ jobs:
         # Build single wheel for testing
         export CIBW_BUILD="cp311-manylinux_x86_64"
         export CIBW_MANYLINUX_X86_64_IMAGE="quay.io/pypa/manylinux2014_x86_64"
-        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:/opt/rh/llvm-toolset-7/root/usr/bin:$PATH" LIBCLANG_PATH="/opt/rh/llvm-toolset-7/root/usr/lib64"'
+        export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_BEFORE_ALL_LINUX='
-          echo "=== Installing build dependencies ==="
-          yum install -y cmake3 llvm-toolset-7-clang-devel llvm-toolset-7-llvm-devel
-          ln -sf /usr/bin/cmake3 /usr/bin/cmake
           echo "=== Installing Rust ==="
           curl --proto '\''=https'\'' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
           source $HOME/.cargo/env

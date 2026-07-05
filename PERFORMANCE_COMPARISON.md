@@ -1,44 +1,36 @@
-# Performance Comparison: v0.2.0-beta vs v0.3.0
+# Performance Comparison: LightGBM binding vs pure Rust evaluator
 
 ## Test Environment
-- **Old API**: rskmoi/namedivider-api:0.2.0-beta (Docker)
-- **New API**: Current build with lightgbm-rs improvements
+- **Old implementation**: `lightgbm-rs` Booster prediction
+- **New implementation**: Pure Rust evaluator for the bundled LightGBM text model
 - **Test Platform**: Linux x64
-- **Test Date**: 2025-06-18
+- **Rust**: 1.75.0
 
-## Results Summary
+## Correctness
 
-### Single Name Processing
-| Version | Average Time | Improvement |
-|---------|-------------|-------------|
-| v0.2.0-beta | 13.45ms | baseline |
-| **v0.3.0** | **11.66ms** | **1.15x faster** ⚡ |
+The pure Rust evaluator was compared against the previous `lightgbm-rs` implementation using the same feature extraction and name-division flow.
 
-### Batch Processing (100 names)
-| Version | Total Time | Per Name | Improvement |
-|---------|------------|----------|-------------|
-| v0.2.0-beta | 39.12ms | 0.39ms | baseline |
-| **v0.3.0** | **36.13ms** | **0.36ms** | **1.08x faster** ⚡ |
+| Dataset | Rows | Output differences | Max score difference |
+|---------|------|--------------------|----------------------|
+| `seimei_test.txt` | 10,000 | 0 | 0.0 |
+| `test.txt` | 10,751 | 0 | 0.0 |
 
-## Key Improvements in v0.3.0
+## Accuracy
 
-1. **Enhanced lightgbm-rs**: Updated to version with bindgen 0.69 support
-2. **Automatic C API binding**: Eliminated manual LGBM function definitions
-3. **Optimized dependencies**: Reduced overhead from improved binding generation
-4. **Rust 1.75 compatibility**: Maintained compatibility while gaining performance
+| Dataset | Accuracy |
+|---------|----------|
+| `seimei_test.txt` | 0.999400000000 |
+| `test.txt` | 0.999069853967 |
 
-## Test Methodology
+## Prediction Microbenchmark
 
-- **Single Name Test**: 10 iterations processing "田中太郎"
-- **Batch Test**: 3 iterations processing 100 Japanese names
-- **API Mode**: GBDT (high accuracy mode)
-- **Measurements**: HTTP request timing including JSON serialization
+20,000 direct model predictions over representative feature vectors:
 
-## Conclusion
+| Implementation | Time |
+|----------------|------|
+| Pure Rust evaluator | 157 ms |
+| `lightgbm-rs` Booster | 684 ms |
 
-The lightgbm-rs integration successfully delivered measurable performance improvements:
-- Consistent 8-15% speedup across different workloads
-- Maintained accuracy while improving speed
-- Simplified maintenance through automated binding generation
+## Summary
 
-These improvements benefit all 1000+ existing Docker Hub users automatically upon upgrade.
+The pure Rust evaluator removes the LightGBM native dependency while preserving prediction output exactly for the tested datasets. It also makes `GBDTNameDivider` shareable across threads without relying on thread-local Booster instances.

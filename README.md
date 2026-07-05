@@ -6,9 +6,9 @@
 
 [python実装](https://github.com/rskmoi/namedivider-python/blob/master/README.md)より最大200倍ほど高速化しています。
 
-cliで名前1つを分割するときBasicNameDividerで3ms,GBDTNameDividerで15ms程度です。 
+cliで名前1つを分割するときBasicNameDividerで3ms,GBDTNameDividerで15ms程度です。
 
-lightgbmのモデルをPythonからRustに移植した結果、完璧に同じ結果を再現できず若干こちらのほうが精度が低いです。
+GBDTNameDividerはLightGBM text modelを純Rust evaluatorで推論します。LightGBMのnativeライブラリやRust bindingには依存していません。
 
 こちらの実装はスーパーアルファ版で、後方互換性・保守性など全く考えていません。
 
@@ -67,8 +67,8 @@ pprint(divided_name.to_dict())
 - **プラットフォーム**: 
   - Linux: manylinux2014, musllinux_1_2 (x86_64)
   - Windows: win_amd64
-  - macOS Intel: x86_64 (macOS 13.0以降)
-  - macOS Apple Silicon: arm64 (macOS 14.0以降)
+  - macOS Intel: x86_64 (macOS 10.13以降)
+  - macOS Apple Silicon: arm64 (macOS 11.0以降)
 - **総計**: 30種類のホイール環境をサポート
 
 詳細な技術情報については [ワークフローのドキュメント](.github/workflows/README.md) を参照してください。

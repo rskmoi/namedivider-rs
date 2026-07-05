@@ -100,7 +100,7 @@ fn main() {
             let mut total: f64 = 0.0;
             let mut ng: f64 = 0.0;
             for divided_name in file_contents.lines() {
-                let divided_name_orig = divided_name.clone();
+                let divided_name_orig = divided_name;
                 let undivided_name = divided_name.replace(' ', "");
                 let divided_name = divide_name(&divider, &undivided_name.to_string());
                 let divided_name_str =
