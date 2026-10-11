@@ -63,7 +63,7 @@ pprint(divided_name.to_dict())
 このプロジェクトでは、GitHub Actionsを使用して全プラットフォーム対応のPythonホイールを自動ビルドしています。
 
 ### 対応環境
-- **Python**: 3.9, 3.10, 3.11, 3.12, 3.13, 3.14
+- **Python**: 3.10, 3.11, 3.12, 3.13, 3.14, 3.15
 - **プラットフォーム**: 
   - Linux: manylinux2014, musllinux_1_2 (x86_64)
   - Windows: win_amd64

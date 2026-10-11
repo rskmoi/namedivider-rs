@@ -118,11 +118,11 @@ jobs:
         echo "=== Validating Python and Rust versions ==="
         
         # Check Python versions (should be available)
-        python_versions=("3.9" "3.10" "3.11" "3.12" "3.13" "3.14")
+        python_versions=("3.10" "3.11" "3.12" "3.13" "3.14" "3.15")
         echo "Target Python versions: ${python_versions[*]}"
         
         # Check Rust toolchain
-        target_rust_version="1.75.0"
+        target_rust_version="1.83.0"
         echo "Target Rust version: $target_rust_version"
         
         echo "✅ Version configurations validated"
@@ -140,7 +140,7 @@ jobs:
         echo "✅ maturin installation successful"
         
         # Test cibuildwheel installation
-        python -m pip install cibuildwheel
+        python -m pip install cibuildwheel==4.2.1
         echo "✅ cibuildwheel installation successful"
         
         echo "✅ All Python dependencies installed successfully"
@@ -150,9 +150,9 @@ jobs:
         echo "=== Validating cibuildwheel configuration ==="
         
         # Test cibuildwheel configuration syntax
-        export CIBW_BUILD="cp311-*"
+        export CIBW_BUILD="cp315-*"
         export CIBW_SKIP="*-musllinux*"
-        export CIBW_MANYLINUX_X86_64_IMAGE="quay.io/pypa/manylinux2014_x86_64"
+        export CIBW_MANYLINUX_X86_64_IMAGE="quay.io/pypa/manylinux_2_28_x86_64"
         export CIBW_MUSLLINUX_X86_64_IMAGE="quay.io/pypa/musllinux_1_2_x86_64"
         
         echo "CIBW_BUILD: $CIBW_BUILD"
@@ -162,7 +162,7 @@ jobs:
         
         # Test build matrix configuration
         echo "Build matrix validation:"
-        echo "- Python versions: 3.9, 3.10, 3.11, 3.12, 3.13, 3.14"
+        echo "- Python versions: 3.10, 3.11, 3.12, 3.13, 3.14, 3.15"
         echo "- Platforms: Linux manylinux/musllinux, Windows, macOS Intel/Apple Silicon"
         echo "- Total combinations: 6 × 5 = 30 wheels"
         

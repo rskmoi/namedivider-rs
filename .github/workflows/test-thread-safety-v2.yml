@@ -11,10 +11,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux builds (manylinux only, Python 3.13)
+          # Linux builds (manylinux only, Python 3.15)
           - os: ubuntu-latest
             platform: linux
-          # Windows builds (Python 3.13)
+          # Windows builds (Python 3.15)
           - os: windows-latest
             platform: windows
           # macOS Intel (x86_64)
@@ -94,19 +94,19 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         # Install cibuildwheel
-        python -m pip install cibuildwheel
+        python -m pip install cibuildwheel==4.2.1
         
-        # Build manylinux only (Python 3.13)
+        # Build manylinux only (Python 3.15)
         echo "=== Building manylinux wheels ==="
-        export CIBW_BUILD="cp313-manylinux_x86_64"
+        export CIBW_BUILD="cp315-manylinux_x86_64"
         export CIBW_ENVIRONMENT='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-musllinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
       env:
-        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
+        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux_2_28_x86_64
         CIBW_BEFORE_ALL_LINUX: |
           echo "=== Installing Rust ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y
           source $HOME/.cargo/env
         CIBW_BEFORE_BUILD: "pip install maturin"
         
@@ -115,13 +115,13 @@ jobs:
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v2.20.0
+      uses: pypa/cibuildwheel@v4.2.1
       with:
         package-dir: python
         output-dir: wheelhouse
       env:
-        # Build only Python 3.13 (64-bit only)
-        CIBW_BUILD: "cp313-*"
+        # Build only Python 3.15 (64-bit only)
+        CIBW_BUILD: "cp315-*"
         
         # macOS deployment target based on matrix (Intel: 10.13, Apple Silicon: 11.0)
         CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
@@ -129,12 +129,12 @@ jobs:
         # Windows-specific setup
         CIBW_BEFORE_ALL_WINDOWS: >
           echo "=== Installing Rust ===" &&
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
           echo "=== Installing Rust ===" &&
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y &&
           source $HOME/.cargo/env
         
         CIBW_ENVIRONMENT_WINDOWS: >
@@ -159,7 +159,7 @@ jobs:
           PATH="$HOME/.cargo/bin:$PATH"
         
         # Skip PyPy builds and 32-bit architectures
-        CIBW_SKIP: "pp* *-win32 *_i686"
+        CIBW_SKIP: "pp* *-win32 *_i686 cp315t-*"
         
         # Test commands - run inside build environment (same as Linux)
         CIBW_TEST_COMMAND: "python -c \"import namedivider_core, concurrent.futures; divider = namedivider_core.GBDTNameDivider(); print('Single:', divider.divide_name('菅義偉')); print('Multi-thread...'); f = lambda i: [divider.divide_name('田中太郎') for _ in range(10)]; list(concurrent.futures.ThreadPoolExecutor(4).map(f, range(4))); print('✅ Done')\""

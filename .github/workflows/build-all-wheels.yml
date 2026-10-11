@@ -94,23 +94,23 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         python -m pip install --upgrade pip
-        python -m pip install cibuildwheel
+        python -m pip install cibuildwheel==4.2.1
 
-        echo "=== Building manylinux wheels (cp39–cp313) ==="
-        export CIBW_BUILD="cp39-manylinux_x86_64 cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
+        echo "=== Building manylinux wheels (cp310–cp313) ==="
+        export CIBW_BUILD="cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
         export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-win32 *_i686 *-musllinux* cp314-*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
-        echo "=== Building manylinux wheels (cp314) ==="
-        export CIBW_BUILD="cp314-manylinux_x86_64"
+        echo "=== Building manylinux wheels (cp314–cp315) ==="
+        export CIBW_BUILD="cp314-manylinux_x86_64 cp315-manylinux_x86_64"
         export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-win32 *_i686 *-musllinux*"
         export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
         python -m cibuildwheel python/ --output-dir wheelhouse/
 
-        echo "=== Building musllinux wheels (cp39–cp314) ==="
-        export CIBW_BUILD="cp39-musllinux_x86_64 cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64"
+        echo "=== Building musllinux wheels (cp310–cp315) ==="
+        export CIBW_BUILD="cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64 cp315-musllinux_x86_64"
         export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
         export CIBW_SKIP="*-win32 *_i686 *-manylinux*"
         python -m cibuildwheel python/ --output-dir wheelhouse/
@@ -121,19 +121,19 @@ jobs:
         CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
         CIBW_BEFORE_ALL_LINUX: |
           echo "=== Installing Rust ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y
           source $HOME/.cargo/env
         CIBW_BEFORE_BUILD: "pip install maturin"
 
     - name: Build wheels (Windows/macOS)
       if: runner.os != 'Linux'
-      uses: pypa/cibuildwheel@v3.2.1
+      uses: pypa/cibuildwheel@v4.2.1
       with:
         package-dir: python
         output-dir: wheelhouse
       env:
-        # Build all Python versions 3.9-3.14 (64-bit only)
-        CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+        # Build all Python versions 3.10-3.15 (64-bit only)
+        CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-* cp315-*"
         
         # macOS deployment target based on matrix (Intel: 10.13, Apple Silicon: 11.0)
         CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
@@ -141,12 +141,12 @@ jobs:
         # Windows-specific setup
         CIBW_BEFORE_ALL_WINDOWS: >
           echo "=== Installing Rust ===" &&
-          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y
         
         # macOS-specific setup
         CIBW_BEFORE_ALL_MACOS: >
           echo "=== Installing Rust ===" &&
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.75.0 -y &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y &&
           source $HOME/.cargo/env
         
         CIBW_ENVIRONMENT_WINDOWS: >
@@ -235,7 +235,7 @@ jobs:
         # Verify Python versions
         echo ""
         echo "=== Wheels by Python Version ==="
-        for py_ver in cp39 cp310 cp311 cp312 cp313 cp314; do
+        for py_ver in cp310 cp311 cp312 cp313 cp314 cp315; do
           count=$(find dist/ -name "*${py_ver}*" -type f | wc -l)
           echo "Python ${py_ver#cp}: $count wheels"
         done
