@@ -3,6 +3,7 @@ pub mod basic_score_calculator;
 pub mod divided_name;
 pub mod gbdt_name_divider;
 pub mod gbdt_score_calculator;
+pub mod lightgbm_text_model;
 pub mod name_divider;
 pub mod name_divider_base;
 pub mod score_calculator;

@@ -30,34 +30,30 @@ fn test_gbdt_name_divider_single_thread() {
     }
 }
 
-/// このテストは現状では**コンパイルエラー**になるため、コメントアウト
-/// LightGBMのBoosterが`Send`/`Sync`を実装していないため、
-/// Rustコンパイラがスレッド間での共有を阻止している
-/// 
-/// コンパイルエラー内容:
-/// - `*mut c_void` cannot be shared between threads safely
-/// - `*mut c_void` cannot be sent between threads safely
-/// 
-/// これがmacOSでのPythonクラッシュの根本原因
 #[test]
-#[ignore] // コンパイルエラーを回避するため無効化
 fn test_gbdt_name_divider_multi_thread_concurrent_access() {
-    // 注意: このテストを有効化するとコンパイルエラーが発生します
-    // 詳細は上記のコメントを参照
-    
-    // let divider = Arc::new(get_gbdt_name_divider(" ".to_string(), true, "gbdt".to_string()));
-    // let mut handles = vec![];
-    
-    // for thread_id in 0..10 {
-    //     let divider_clone = Arc::clone(&divider);
-    //     let handle = thread::spawn(move || {
-    //         // このクロージャでコンパイルエラーが発生
-    //     });
-    // }
-    
-    println!("✓ Thread safety issue confirmed at compile time");
-    println!("✓ LightGBM Booster does not implement Send/Sync");
-    println!("✓ This explains the macOS crash in Python bindings");
+    let divider = Arc::new(get_gbdt_name_divider(" ".to_string(), true, "gbdt".to_string()));
+    let mut handles = vec![];
+
+    for thread_id in 0..10 {
+        let divider_clone = Arc::clone(&divider);
+        let handle = thread::spawn(move || {
+            for i in 0..50 {
+                let name_index = (thread_id * 50 + i) % TEST_NAMES.len();
+                let name = TEST_NAMES[name_index];
+
+                let divided_name = divider_clone.divide_name(&name.to_string());
+                assert!(!divided_name.family.is_empty());
+                assert!(!divided_name.given.is_empty());
+            }
+            println!("Thread {} with shared instance completed", thread_id);
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().expect("Thread should complete successfully");
+    }
 }
 
 #[test]

@@ -10,8 +10,7 @@
 
 - family_names.txt の再構築テスト
 - 依存関係の確認
-- プラットフォーム固有の環境変数テスト
-- Linux libclang検出テスト
+- プラットフォーム固有のファイル処理テスト
 - Windows GBDT処理テスト
 
 **使用タイミング**: 
@@ -20,7 +19,7 @@
 
 ### 2. `test-build.yml` - 単一環境テスト（デバッグ用）
 **実行時間**: 10-15分  
-**目的**: Ubuntu + Python 3.11 環境での実ビルドテスト
+**目的**: Ubuntu + Python 3.15 環境での実ビルドテスト
 
 - 実際のPythonホイール作成
 - 機能テスト（BasicNameDivider, GBDTNameDivider）
@@ -37,9 +36,9 @@
 
 **対象環境**:
 - **Linux**: manylinux + musllinux（各6ホイール）
-- **Windows**: Python 3.9-3.14（6ホイール）  
-- **macOS Intel**: Python 3.9-3.14（6ホイール）
-- **macOS Apple Silicon**: Python 3.9-3.14（6ホイール）
+- **Windows**: Python 3.10-3.15（6ホイール）  
+- **macOS Intel**: Python 3.10-3.15（6ホイール）
+- **macOS Apple Silicon**: Python 3.10-3.15（6ホイール）
 - **合計**: 30ホイール
 
 **使用タイミング**:
@@ -64,9 +63,9 @@
 ## 🛠️ 技術的詳細
 
 ### Linux環境の特殊対応
-- **manylinux**: CentOS 7ベース、llvm-toolset-7使用
-- **musllinux**: Alpine Linuxベース、標準clang使用
-- **LIBCLANG_PATH**: プラットフォーム自動検出で設定
+- **manylinux**: Python 3.10-3.13 は manylinux2014、Python 3.14-3.15 は manylinux_2_28 を使用
+- **musllinux**: musllinux_1_2 を使用
+- **Rust**: 各 build image 内で Rust 1.83.0 をインストール
 
 ### Windows環境の特殊対応
 - **UTF-8エンコーディング**: GBDT modelファイルの文字化け対策
@@ -74,24 +73,20 @@
 - **32bit除外**: `*-win32 *_i686` はスキップ
 
 ### macOS環境の特殊対応
-- **OpenMP**: LightGBM用にlibomp自動インストール
-- **明示的リンク**: build.rsによるプラットフォーム別OpenMPリンク設定
-- **Deployment Target**: Intel Mac（13.0以降）、Apple Silicon（14.0以降）
-- **アーキテクチャ別パス**: 
-  - Intel Mac: `/usr/local/opt/libomp/lib`
-  - Apple Silicon: `/opt/homebrew/opt/libomp/lib`
+- **Deployment Target**: Intel Mac（10.13以降）、Apple Silicon（11.0以降）
+- **Rust**: cibuildwheel実行前に Rust 1.83.0 をインストール
 
 ## 🔧 保守・更新
 
 ### 定期的な見直し項目
-- Rustバージョン（現在: 1.75.0）
-- Pythonバージョン範囲（現在: 3.9-3.14）
-- cibuildwheelバージョン（現在: v3.2.1）
+- Rustバージョン（現在: 1.83.0）
+- Pythonバージョン範囲（現在: 3.10-3.15）
+- cibuildwheelバージョン（現在: v4.2.1）
 - コンテナイメージ（manylinux2014, musllinux_1_2）
 
 ### 新しいプラットフォーム追加時
 1. 新環境用のCIBW_ENVIRONMENT設定追加
-2. 依存関係インストール手順の確認
+2. Rust toolchain と deployment target の確認
 3. テスト実行による動作確認
 4. ドキュメント更新
 

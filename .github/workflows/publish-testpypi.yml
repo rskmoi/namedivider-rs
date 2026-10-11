@@ -1,0 +1,245 @@
+name: Publish TestPyPI Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish, e.g. 0.4.0"
+        required: true
+        type: string
+      confirm:
+        description: "Type testpypi to confirm TestPyPI release"
+        required: true
+        type: string
+
+jobs:
+  guard:
+    name: Validate release request
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate confirmation
+      run: |
+        if [ "${{ inputs.confirm }}" != "testpypi" ]; then
+          echo "Confirmation must be exactly: testpypi"
+          exit 1
+        fi
+
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    needs: guard
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-15-intel
+            platform: macos
+            macos_target: "10.13"
+          - os: macos-14
+            platform: macos
+            macos_target: "11.0"
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Validate package version
+      shell: bash
+      run: |
+        actual_version=$(python -c "import tomllib; print(tomllib.load(open('python/pyproject.toml', 'rb'))['project']['version'])")
+        if [ "$actual_version" != "${{ inputs.version }}" ]; then
+          echo "Input version ${{ inputs.version }} does not match python/pyproject.toml version $actual_version"
+          exit 1
+        fi
+
+    - name: Reconstruct family_names.txt
+      shell: bash
+      run: |
+        mkdir -p secret
+        add_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" != *$'\n' ]]; then
+            printf "%s\n" "$content"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        remove_newline_if_needed() {
+          local content
+          content=$(cat)
+          if [[ "$content" == *$'\n' ]]; then
+            printf "%s" "${content%$'\n'}"
+          else
+            printf "%s" "$content"
+          fi
+        }
+        {
+          printf "%s" "${FAMILY_NAMES_PART_1}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_2}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_3}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_4}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_5}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_6}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_7}" | add_newline_if_needed
+          printf "%s" "${FAMILY_NAMES_PART_8}" | remove_newline_if_needed
+        } > secret/family_names.txt
+        cp secret/family_names.txt namedivider-rs/src/assets/family_names.txt
+        line_count=$(wc -l < namedivider-rs/src/assets/family_names.txt)
+        if [ "$line_count" -eq 39999 ]; then
+          echo "✓ family_names.txt reconstruction successful ($line_count lines)"
+        else
+          echo "✗ family_names.txt reconstruction failed: got $line_count lines, expected 39999"
+          exit 1
+        fi
+      env:
+        FAMILY_NAMES_PART_1: ${{ secrets.FAMILY_NAMES_PART_1 }}
+        FAMILY_NAMES_PART_2: ${{ secrets.FAMILY_NAMES_PART_2 }}
+        FAMILY_NAMES_PART_3: ${{ secrets.FAMILY_NAMES_PART_3 }}
+        FAMILY_NAMES_PART_4: ${{ secrets.FAMILY_NAMES_PART_4 }}
+        FAMILY_NAMES_PART_5: ${{ secrets.FAMILY_NAMES_PART_5 }}
+        FAMILY_NAMES_PART_6: ${{ secrets.FAMILY_NAMES_PART_6 }}
+        FAMILY_NAMES_PART_7: ${{ secrets.FAMILY_NAMES_PART_7 }}
+        FAMILY_NAMES_PART_8: ${{ secrets.FAMILY_NAMES_PART_8 }}
+
+    - name: Build wheels (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install cibuildwheel==4.2.1
+
+        echo "=== Building manylinux wheels (cp310–cp313) ==="
+        export CIBW_BUILD="cp310-manylinux_x86_64 cp311-manylinux_x86_64 cp312-manylinux_x86_64 cp313-manylinux_x86_64"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
+        export CIBW_SKIP="*-win32 *_i686 *-musllinux* cp314-*"
+        python -m cibuildwheel python/ --output-dir wheelhouse/
+
+        echo "=== Building manylinux wheels (cp314–cp315) ==="
+        export CIBW_BUILD="cp314-manylinux_x86_64 cp315-manylinux_x86_64"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
+        export CIBW_SKIP="*-win32 *_i686 *-musllinux*"
+        export CIBW_MANYLINUX_X86_64_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
+        python -m cibuildwheel python/ --output-dir wheelhouse/
+
+        echo "=== Building musllinux wheels (cp310–cp315) ==="
+        export CIBW_BUILD="cp310-musllinux_x86_64 cp311-musllinux_x86_64 cp312-musllinux_x86_64 cp313-musllinux_x86_64 cp314-musllinux_x86_64 cp315-musllinux_x86_64"
+        export CIBW_ENVIRONMENT_LINUX='PATH="$HOME/.cargo/bin:$PATH"'
+        export CIBW_SKIP="*-win32 *_i686 *-manylinux*"
+        python -m cibuildwheel python/ --output-dir wheelhouse/
+      env:
+        CIBW_MANYLINUX_X86_64_IMAGE: quay.io/pypa/manylinux2014_x86_64
+        CIBW_MANYLINUX_AARCH64_IMAGE: quay.io/pypa/manylinux2014_aarch64
+        CIBW_MUSLLINUX_X86_64_IMAGE: quay.io/pypa/musllinux_1_2_x86_64
+        CIBW_MUSLLINUX_AARCH64_IMAGE: quay.io/pypa/musllinux_1_2_aarch64
+        CIBW_BEFORE_ALL_LINUX: |
+          echo "=== Installing Rust ==="
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y
+          source $HOME/.cargo/env
+        CIBW_BEFORE_BUILD: "pip install maturin"
+
+    - name: Build wheels (Windows/macOS)
+      if: runner.os != 'Linux'
+      uses: pypa/cibuildwheel@v4.2.1
+      with:
+        package-dir: python
+        output-dir: wheelhouse
+      env:
+        CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-* cp315-*"
+        CIBW_ENVIRONMENT_MACOS: ${{ matrix.macos_target && format('MACOSX_DEPLOYMENT_TARGET={0}', matrix.macos_target) || '' }}
+        CIBW_BEFORE_ALL_WINDOWS: >
+          echo "=== Installing Rust ===" &&
+          curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y
+        CIBW_BEFORE_ALL_MACOS: >
+          echo "=== Installing Rust ===" &&
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.83.0 -y &&
+          source $HOME/.cargo/env
+        CIBW_ENVIRONMENT_WINDOWS: >
+          PYTHONUTF8=1
+          PYTHONIOENCODING=utf-8
+          RUST_BACKTRACE=1
+          PATH="$USERPROFILE\\.cargo\\bin;$PATH"
+        CIBW_BEFORE_BUILD_WINDOWS: >
+          powershell -Command "$ErrorActionPreference = 'Stop'; $modelFile = 'namedivider-rs/src/assets/gbdt_model_v1.txt'; if (Test-Path $modelFile) { $fileBytes = [System.IO.File]::ReadAllBytes($modelFile); $utf8Decoder = [System.Text.UTF8Encoding]::new($false, $true); $content = $utf8Decoder.GetString($fileBytes); $normalizedContent = $content -replace \"`r`n\", \"`n\" -replace \"`r\", \"`n\"; $utf8NoBom = [System.Text.UTF8Encoding]::new($false); [System.IO.File]::WriteAllText($modelFile, $normalizedContent, $utf8NoBom); Write-Host 'GBDT model file UTF-8 encoding fixed'; }" &&
+          pip install maturin
+        CIBW_ENVIRONMENT_MACOS_X86_64: >
+          MACOSX_DEPLOYMENT_TARGET="10.13"
+          PATH="$HOME/.cargo/bin:$PATH"
+        CIBW_ENVIRONMENT_MACOS_ARM64: >
+          MACOSX_DEPLOYMENT_TARGET="11.0"
+          PATH="$HOME/.cargo/bin:$PATH"
+        CIBW_TEST_COMMAND_WINDOWS: >
+          bash -c "export LANG=en_US.UTF-8; export LC_ALL=en_US.UTF-8; python -c 'import namedivider_core; print(\"Module imported successfully\"); basic = namedivider_core.BasicNameDivider(); result1 = basic.divide_name(\"田中太郎\"); assert str(result1) == \"田中 太郎\"; print(\"BasicNameDivider test passed\"); gbdt = namedivider_core.GBDTNameDivider(); result2 = gbdt.divide_name(\"佐藤花子\"); assert str(result2) == \"佐藤 花子\"; print(\"GBDTNameDivider test passed\"); print(\"All tests passed!\")'"
+        CIBW_TEST_COMMAND_MACOS: >
+          python -c "import namedivider_core; print('Module imported successfully'); basic = namedivider_core.BasicNameDivider(); result1 = basic.divide_name('田中太郎'); assert str(result1) == '田中 太郎'; print('BasicNameDivider test passed'); gbdt = namedivider_core.GBDTNameDivider(); result2 = gbdt.divide_name('佐藤花子'); assert str(result2) == '佐藤 花子'; print('GBDTNameDivider test passed'); print('All tests passed!')"
+        CIBW_SKIP: "pp* *-win32 *_i686 cp31?t-*"
+
+    - name: Upload wheels
+      uses: actions/upload-artifact@v4
+      with:
+        name: testpypi-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+        path: wheelhouse/*.whl
+
+  verify-wheels:
+    name: Verify release wheels
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download wheel artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist/
+
+    - name: Verify wheel set
+      run: |
+        find dist/ -name "*.whl" -type f | sort
+        total_wheels=$(find dist/ -name "*.whl" -type f | wc -l)
+        if [ "$total_wheels" -ne 30 ]; then
+          echo "Expected 30 wheels, got $total_wheels"
+          exit 1
+        fi
+        for py_ver in cp310 cp311 cp312 cp313 cp314 cp315; do
+          count=$(find dist/ -name "*${py_ver}*" -type f | wc -l)
+          if [ "$count" -ne 5 ]; then
+            echo "Expected 5 wheels for $py_ver, got $count"
+            exit 1
+          fi
+        done
+        mkdir -p final_dist
+        find dist/ -name "*.whl" -exec cp {} final_dist/ \;
+
+    - name: Check distributions
+      run: |
+        python -m pip install --upgrade twine
+        python -m twine check final_dist/*.whl
+
+    - name: Upload PyPI-ready wheels
+      uses: actions/upload-artifact@v4
+      with:
+        name: testpypi-ready-wheels-${{ inputs.version }}
+        path: final_dist/*.whl
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: verify-wheels
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+    - name: Download TestPyPI-ready wheels
+      uses: actions/download-artifact@v4
+      with:
+        name: testpypi-ready-wheels-${{ inputs.version }}
+        path: dist/
+
+    - name: Publish package distributions to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/
+        repository-url: https://test.pypi.org/legacy/
+        skip-existing: true
